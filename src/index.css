@@ -1,1 +1,22 @@
 @import "tailwindcss";
+
+@layer base {
+  button, 
+  a, 
+  [role="button"],
+  input[type="submit"],
+  input[type="button"],
+  input[type="checkbox"],
+  input[type="radio"],
+  select,
+  label {
+    cursor: pointer;
+  }
+
+  /* Ensure disabled elements don't show the pointer */
+  button:disabled,
+  input:disabled,
+  [aria-disabled="true"] {
+    cursor: not-allowed;
+  }
+}

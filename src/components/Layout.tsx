@@ -16,6 +16,11 @@ export default function Layout() {
     navigate('/');
   };
 
+  const handleLogin = async () => {
+    await signIn();
+    navigate('/');
+  };
+
   // Redirect to setup if logged in but no profile exists (and not already on setup)
   React.useEffect(() => {
     if (!loading && user && !profile && location.pathname !== '/setup-profile') {
@@ -52,7 +57,7 @@ export default function Layout() {
             <div className="hidden md:flex md:items-center md:space-x-4">
               {user && profile ? (
                 <>
-                  {isAdmin && (
+                  {user.email === 'cs24mt002@iitdh.ac.in' && (
                     <Link
                       to="/admin"
                       className={cn(
@@ -95,7 +100,7 @@ export default function Layout() {
                 </>
               ) : (
                 <button
-                  onClick={signIn}
+                  onClick={handleLogin}
                   className="flex items-center gap-2 px-5 py-2.5 bg-indigo-600 text-white rounded-md font-medium hover:bg-indigo-700 transition shadow-sm"
                 >
                   <UserCircle size={20} />
@@ -122,7 +127,7 @@ export default function Layout() {
             <div className="pt-2 pb-3 space-y-1 px-4">
               {user && profile ? (
                 <>
-                  {isAdmin && (
+                  {user.email === 'cs24mt002@iitdh.ac.in' && (
                     <Link
                       to="/admin"
                       onClick={() => setMobileMenuOpen(false)}
@@ -164,7 +169,7 @@ export default function Layout() {
                 </>
               ) : (
                 <button
-                  onClick={() => { setMobileMenuOpen(false); signIn(); }}
+                  onClick={() => { setMobileMenuOpen(false); handleLogin(); }}
                   className="w-full text-left px-3 py-2 text-base font-medium text-indigo-600 bg-indigo-50 rounded-md flex items-center gap-2"
                 >
                   <UserCircle size={18} /> Login (@iitdh.ac.in)

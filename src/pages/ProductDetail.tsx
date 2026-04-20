@@ -3,21 +3,20 @@ import { useParams, Link, useNavigate } from 'react-router-dom';
 import { doc, getDoc, updateDoc, deleteDoc, increment, arrayUnion, arrayRemove } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 import { useAuth } from '../contexts/AuthContext';
-import { IndianRupee, ShieldAlert, Phone, Mail, ChevronLeft, ChevronRight, Eye, MousePointerClick, ShieldCheck, Heart } from 'lucide-react';
+import { IndianRupee, ShieldAlert, Phone, Mail, ChevronLeft, ChevronRight, Eye, MousePointerClick, ShieldCheck, Heart, Tag } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 import toast from 'react-hot-toast';
 
 export default function ProductDetail() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const { user, profile, refreshProfile } = useAuth();
+  const { user, profile, isAdmin, refreshProfile } = useAuth();
   const [product, setProduct] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [currentImageIdx, setCurrentImageIdx] = useState(0);
   const [contactRevealed, setContactRevealed] = useState(false);
   const [revealing, setRevealing] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
-  const [isAdminUser, setIsAdminUser] = useState(false);
   const [wishlistLoading, setWishlistLoading] = useState(false);
 
   const isInWishlist = profile?.wishlist?.includes(id || '');
@@ -52,19 +51,6 @@ export default function ProductDetail() {
 
   useEffect(() => {
     if (!id) return;
-    
-    const checkAdminStatus = async () => {
-      if (!user) return;
-      try {
-        const adminDoc = await getDoc(doc(db, 'admins', user.uid));
-        if (adminDoc.exists()) {
-          setIsAdminUser(true);
-        }
-      } catch (e) {
-        // Silently fail, they just aren't an admin
-      }
-    };
-    checkAdminStatus();
     
     const fetchAndViewProduct = async () => {
       try {
@@ -134,7 +120,7 @@ export default function ProductDetail() {
   }
 
   const isOwner = user?.uid === product.sellerId;
-  const canManage = isOwner || isAdminUser;
+  const canManage = isOwner || isAdmin;
 
   return (
     <div className="max-w-5xl mx-auto py-6">
@@ -285,10 +271,10 @@ export default function ProductDetail() {
               ) : canManage ? (
                 <div className="space-y-4">
                   <div className="space-y-3">
-                    <p className={`text-sm mb-2 p-3 rounded-lg border ${isAdminUser && !isOwner ? 'bg-red-50 text-red-800 border-red-200' : 'bg-blue-50 text-gray-600 border-blue-100'}`}>
-                      {isAdminUser && !isOwner ? (
-                        <span className="flex items-center gap-1 font-bold"><ShieldCheck size={16}/> Admin View: You are overriding this user's listing.</span>
-                      ) : (
+                  <p className={`text-sm mb-2 p-3 rounded-lg border ${isAdmin && !isOwner ? 'bg-red-50 text-red-800 border-red-200' : 'bg-blue-50 text-gray-600 border-blue-100'}`}>
+                    {isAdmin && !isOwner ? (
+                      <span className="flex items-center gap-1 font-bold"><ShieldCheck size={16}/> Admin View: You are overriding this user's listing.</span>
+                    ) : (
                         "This is your listing. Here's your contact info:"
                       )}
                     </p>
@@ -376,8 +362,9 @@ export default function ProductDetail() {
                              toast.error(`Failed to update: ${err.message}`);
                            }
                          }}
-                         className="w-full flex justify-center items-center py-2.5 px-4 border border-gray-300 rounded-lg shadow-sm text-sm font-medium text-gray-700 bg-gray-50 hover:bg-gray-100 focus:outline-none transition"
+                         className="w-full flex justify-center items-center py-2.5 px-4 border border-gray-300 rounded-lg shadow-sm text-sm font-medium text-gray-700 bg-gray-50 hover:bg-gray-100 focus:outline-none transition gap-2"
                        >
+                         <Tag size={18} />
                          Mark as Sold
                        </button>
                     )}

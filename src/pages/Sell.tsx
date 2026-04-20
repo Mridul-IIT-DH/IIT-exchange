@@ -8,7 +8,7 @@ import toast from 'react-hot-toast';
 import imageCompression from 'browser-image-compression';
 
 export default function Sell() {
-  const { user, profile } = useAuth();
+  const { user, profile, isAdmin } = useAuth();
   const navigate = useNavigate();
   const { id } = useParams<{ id: string }>();
   const isEditMode = !!id;
@@ -31,8 +31,8 @@ export default function Sell() {
   // Authentication check
   useEffect(() => {
     if (!user) navigate('/');
-    if (user && !profile && !fetching) navigate('/setup-profile');
-  }, [user, profile, navigate, fetching]);
+    if (user && !profile && !fetching && !isAdmin) navigate('/setup-profile');
+  }, [user, profile, navigate, fetching, isAdmin]);
 
   // Fetch product data if edit mode
   useEffect(() => {
@@ -43,10 +43,14 @@ export default function Sell() {
         const docSnap = await getDoc(docRef);
         if (docSnap.exists()) {
           const data = docSnap.data();
-          if (data.sellerId !== user.uid) {
+          // Allow edit if owner OR admin
+          if (data.sellerId !== user.uid && !isAdmin) {
             toast.error("Unauthorized. You can only edit your own listings.");
             navigate('/dashboard');
             return;
+          }
+          if (data.sellerId !== user.uid && isAdmin) {
+            toast("Admin Editing Mode", { icon: '🛡️' });
           }
           setTitle(data.title);
           setDescription(data.description);

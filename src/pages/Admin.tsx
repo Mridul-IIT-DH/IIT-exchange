@@ -15,7 +15,10 @@ import {
   Search,
   Filter,
   RefreshCw,
-  AlertTriangle
+  AlertTriangle,
+  Edit3,
+  CheckCircle2,
+  Tag
 } from 'lucide-react';
 import { format } from 'date-fns';
 import toast from 'react-hot-toast';
@@ -170,6 +173,19 @@ export default function Admin() {
     }
   };
 
+  const handleMarkSold = async (id: string) => {
+    try {
+      await updateDoc(doc(db, 'products', id), { 
+        status: 'sold',
+        updatedAt: Date.now()
+      });
+      toast.success("Listing marked as sold");
+      fetchData();
+    } catch (error: any) {
+      toast.error("Update failed: " + error.message);
+    }
+  };
+
   if (authLoading || !isAdmin) {
     return (
       <div className="flex flex-col items-center justify-center h-64 gap-4">
@@ -308,16 +324,34 @@ export default function Admin() {
                       {formatSafeDate(l.createdAt, 'MMM d, h:mm a')}
                     </td>
                     <td className="px-6 py-4 text-right">
-                      <div className="flex justify-end gap-2">
+                      <div className="flex justify-end gap-1">
                         <button 
                           onClick={() => navigate(`/product/${l.id}`)}
-                          className="p-2 text-gray-400 hover:text-indigo-600 transition"
+                          className="p-1.5 text-gray-400 hover:text-indigo-600 transition"
+                          title="View Listing"
                         >
                           <ExternalLink size={16} />
                         </button>
                         <button 
+                          onClick={() => navigate(`/sell/${l.id}`)}
+                          className="p-1.5 text-gray-400 hover:text-indigo-600 transition"
+                          title="Edit Listing"
+                        >
+                          <Edit3 size={16} />
+                        </button>
+                        {l.status === 'active' && (
+                          <button 
+                            onClick={() => handleMarkSold(l.id)}
+                            className="p-1.5 text-gray-400 hover:text-green-600 transition"
+                            title="Mark as Sold"
+                          >
+                            <Tag size={16} />
+                          </button>
+                        )}
+                        <button 
                           onClick={() => handleDeleteListing(l.id, l.images)}
-                          className="p-2 text-gray-400 hover:text-red-600 transition"
+                          className="p-1.5 text-gray-400 hover:text-red-600 transition"
+                          title="Delete Listing"
                         >
                           <Trash2 size={16} />
                         </button>

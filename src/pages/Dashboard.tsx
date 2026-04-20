@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { collection, query, where, orderBy, getDocs, doc, updateDoc, deleteDoc, getDoc } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 import { useAuth } from '../contexts/AuthContext';
-import { IndianRupee, Trash2, CheckCircle, Clock, User as UserIcon, Heart, Phone, Edit2, Save, X as CloseIcon } from 'lucide-react';
+import { IndianRupee, Trash2, Tag, Clock, User as UserIcon, Heart, Phone, Edit2, Save, X as CloseIcon } from 'lucide-react';
 import { formatDistanceToNow, format } from 'date-fns';
 import { Link, useNavigate } from 'react-router-dom';
 import toast from 'react-hot-toast';
@@ -283,7 +283,7 @@ export default function Dashboard() {
                           className="flex-1 sm:flex-none p-2 bg-white text-green-600 hover:bg-green-50 border border-green-100 rounded-lg transition"
                           title="Mark as Sold"
                         >
-                          <CheckCircle size={18} />
+                          <Tag size={18} />
                         </button>
                       )}
                       

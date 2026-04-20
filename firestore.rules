@@ -128,9 +128,8 @@ service cloud.firestore {
     }
 
     match /products/{productId} {
-      // Product listings are restricted to IIT students to protect student PII (email/phone)
-      // Admins are allowed to read all listings for moderation.
-      allow get, list: if isIITStudent() || isAdmin();
+      // Product listings are public - no-one needs to login to view
+      allow get, list: if true;
       
       // Strict creation bound to the authorized user
       allow create: if isIITStudent() && 
