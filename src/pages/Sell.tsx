@@ -73,7 +73,7 @@ export default function Sell() {
     if (isEditMode) {
       fetchProduct();
     }
-  }, [id, user, isEditMode, navigate, profile]);
+  }, [id, user, isEditMode, navigate, profile, isAdmin]);
 
   const getUUID = () => {
     if (typeof crypto !== 'undefined' && crypto.randomUUID) return crypto.randomUUID();

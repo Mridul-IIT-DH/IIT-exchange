@@ -333,7 +333,7 @@ export default function Admin() {
                           <ExternalLink size={16} />
                         </button>
                         <button 
-                          onClick={() => navigate(`/sell/${l.id}`)}
+                          onClick={() => navigate(`/edit/${l.id}`)}
                           className="p-1.5 text-gray-400 hover:text-indigo-600 transition"
                           title="Edit Listing"
                         >
