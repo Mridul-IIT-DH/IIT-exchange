@@ -45,14 +45,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       // Check if user is admin
       // Priority 1: User email cs24mt002@iitdh.ac.in
       if (email === 'cs24mt002@iitdh.ac.in') {
-        console.log("Admin detected by hardcoded email:", email);
         setIsAdmin(true);
       } else {
         // Fallback: Check admins collection
         const adminSnap = await getDoc(doc(db, 'admins', uid));
-        const adminExists = adminSnap.exists();
-        console.log(`Admin check for ${email}: ${adminExists ? 'FOUND' : 'NOT FOUND'} in database`);
-        setIsAdmin(adminExists);
+        setIsAdmin(adminSnap.exists());
       }
     } catch (error) {
       console.error("Error fetching profile:", error);

@@ -60,12 +60,10 @@ async function requireAuth(req: express.Request, res: express.Response, next: ex
     
     // Strict domain enforcement and verification check on all API endpoints
     if (!decodedToken.email?.endsWith('@iitdh.ac.in')) {
-      console.warn(`Auth failed: Non-IITD domain (${decodedToken.email})`);
       return res.status(403).json({ error: "Forbidden: Not an IITD domain" });
     }
 
     if (decodedToken.email_verified !== true) {
-      console.warn(`Auth failed: Email not verified (${decodedToken.email})`);
       return res.status(403).json({ error: "Forbidden: Email not verified" });
     }
     
@@ -129,9 +127,33 @@ async function startServer() {
   app.post("/api/images/delete", apiLimiter, requireAuth, async (req, res) => {
     try {
       const { imageUrl } = req.body;
+      const user = (req as any).user;
       
       if (!imageUrl || typeof imageUrl !== "string") {
         return res.status(400).json({ error: "Missing imageUrl" });
+      }
+
+      // Enterprise Hardening: Verify ownership or admin status before deleting from Cloudinary
+      // We check if any product exists where sellerId is this user AND images contains this URL,
+      // OR if the user is a hardcoded admin.
+      const isAdmin = user.email === 'cs24mt002@iitdh.ac.in';
+      
+      if (!isAdmin) {
+        const db = admin.firestore();
+        const productSnapshot = await db.collection('products')
+          .where('images', 'array-contains', imageUrl)
+          .where('sellerId', '==', user.uid)
+          .limit(1)
+          .get();
+
+        if (productSnapshot.empty) {
+          // Check if user is in admins collection too
+          const adminDoc = await db.collection('admins').doc(user.uid).get();
+          if (!adminDoc.exists) {
+            console.warn(`Unauthorized image delete attempt by ${user.email} for URL: ${imageUrl}`);
+            return res.status(403).json({ error: "Forbidden: You do not have permission to delete this image" });
+          }
+        }
       }
 
       // Pattern match to extract Public ID from URL
