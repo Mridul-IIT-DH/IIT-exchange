@@ -1,0 +1,159 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    // ---------------------------------------------------------
+    // 0. GLOBAL SAFETY NET
+    // ---------------------------------------------------------
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // ---------------------------------------------------------
+    // 1. PRIMITIVES
+    // ---------------------------------------------------------
+    function isValidId(id) { 
+      return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$'); 
+    }
+    function incoming() { return request.resource.data; }
+    function existing() { return resource.data; }
+    function isSignedIn() { return request.auth != null; }
+    
+    // Domain restriction check for IIT Dharwad
+    function isIITStudent() {
+      return isSignedIn() && request.auth.token.email.matches('.*@iitdh\\.ac\\.in');
+    }
+
+    function isAdmin() {
+      return isSignedIn() && exists(/databases/$(database)/documents/admins/$(request.auth.uid));
+    }
+    
+    // ---------------------------------------------------------
+    // 2. VALIDATION BLUEPRINTS (Anti-Update-Gaps)
+    // ---------------------------------------------------------
+    function isValidUser(data) {
+      return data.keys().hasAll(['uid', 'name', 'email', 'phone', 'createdAt', 'listingsCountToday', 'wishlist']) &&
+        data.keys().size() == 7 &&
+        data.uid is string && data.uid == request.auth.uid &&
+        data.name is string && data.name.size() > 0 && data.name.size() <= 150 &&
+        data.email is string && data.email == request.auth.token.email &&
+        data.phone is string && data.phone.size() >= 10 && data.phone.size() <= 15 &&
+        data.createdAt is number &&
+        data.listingsCountToday is number &&
+        data.wishlist is list && data.wishlist.size() <= 100;
+    }
+
+    function isValidProduct(data) {
+      return data.keys().hasAll(['id', 'title', 'description', 'price', 'isPriceNegotiable', 'images', 'sellerId', 'sellerName', 'sellerEmail', 'sellerPhone', 'createdAt', 'expiresAt', 'status', 'contactClicks', 'views']) &&
+        data.keys().size() >= 15 && data.keys().size() <= 17 &&
+        data.id is string &&
+        data.title is string && data.title.size() > 0 && data.title.size() <= 150 &&
+        data.description is string && data.description.size() <= 2000 &&
+        data.price is number && data.price >= 0 &&
+        data.isPriceNegotiable is bool &&
+        data.images is list && data.images.size() <= 5 &&
+        data.sellerId is string && data.sellerId == request.auth.uid;
+    }
+
+    function isValidQuery(data) {
+      return data.keys().hasAll(['id', 'userId', 'userName', 'userEmail', 'subject', 'message', 'createdAt', 'status']) &&
+        data.keys().size() == 8 &&
+        data.id is string &&
+        data.userId is string && data.userId == request.auth.uid &&
+        data.userName is string && data.userName.size() <= 150 &&
+        data.userEmail is string && data.userEmail == request.auth.token.email &&
+        data.subject is string && data.subject.size() > 0 && data.subject.size() <= 200 &&
+        data.message is string && data.message.size() > 0 && data.message.size() <= 2000 &&
+        data.createdAt is number &&
+        data.status is string && data.status == 'new';
+    }
+
+    // ---------------------------------------------------------
+    // 3. SECURE COLLECTIONS
+    // ---------------------------------------------------------
+    match /queries/{queryId} {
+      allow read: if false; // Only DB admins can read
+      
+      allow create: if isIITStudent() && 
+                    isValidId(queryId) && 
+                    isValidQuery(incoming()) &&
+                    exists(/databases/$(database)/documents/users/$(request.auth.uid));
+                    
+      allow update, delete: if false;
+    }
+
+    match /users/{userId} {
+      // Anyone logged in with IIT email can read basic info
+      allow read: if isIITStudent();
+      
+      allow create: if isIITStudent() && 
+                    isValidId(userId) && 
+                    userId == request.auth.uid && 
+                    isValidUser(incoming());
+                    
+      // Allow user to update only their phone profile info OR listings limit
+      allow update: if isIITStudent() && 
+                    userId == request.auth.uid && 
+                    isValidUser(incoming()) &&
+                    (
+                      // Updating phone setting
+                      (
+                        incoming().diff(existing()).affectedKeys().hasOnly(['phone'])
+                      )
+                      ||
+                      // Incrementing their listings tracker
+                      (
+                        incoming().diff(existing()).affectedKeys().hasOnly(['listingsCountToday'])
+                      )
+                    );
+    }
+
+    match /products/{productId} {
+      // Product listings are public (UI restricts contact info)
+      allow read: if true;
+      
+      // Strict creation bound to the authorized user
+      allow create: if isIITStudent() && 
+                    isValidId(productId) &&
+                    isValidProduct(incoming()) &&
+                    // Enforce orphaned-write protection (user must exist)
+                    exists(/databases/$(database)/documents/users/$(request.auth.uid));
+
+      allow update: if isIITStudent() && isValidProduct(incoming()) && (
+                      // Action: ADMIN FULL OVERRIDE (Admin can edit any active listing details)
+                      isAdmin()
+                      ||
+                      // Action: Increment Views (Anyone logged in can increment by 1 safely)
+                      (
+                        incoming().diff(existing()).affectedKeys().hasOnly(['views'])
+                      )
+                      ||
+                      // Action: Increment Contact Clicks (Anyone logged in can increment)
+                      (
+                        incoming().diff(existing()).affectedKeys().hasOnly(['contactClicks'])
+                      )
+                      ||
+                      // Action: Owner marks item as Sold/Expired
+                      (
+                        existing().sellerId == request.auth.uid &&
+                        incoming().diff(existing()).affectedKeys().hasOnly(['status']) &&
+                        (incoming().status == 'sold' || incoming().status == 'expired' || incoming().status == 'active')
+                      )
+                      ||
+                      // Action: Owner Extends duration
+                      (
+                        existing().sellerId == request.auth.uid &&
+                        incoming().diff(existing()).affectedKeys().hasOnly(['expiresAt', 'status'])
+                      )
+                      // Normal listing update by owner
+                      ||
+                      (
+                        existing().sellerId == request.auth.uid &&
+                        incoming().diff(existing()).affectedKeys().hasOnly(['title', 'description', 'price', 'isPriceNegotiable', 'images'])
+                      )
+                    );
+
+      allow delete: if isIITStudent() && (existing().sellerId == request.auth.uid || isAdmin());
+    }
+  }
+}

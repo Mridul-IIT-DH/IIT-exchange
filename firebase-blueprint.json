@@ -1,0 +1,48 @@
+{
+  "entities": {
+    "User": {
+      "title": "User",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string" },
+        "name": { "type": "string" },
+        "email": { "type": "string" },
+        "phone": { "type": "string" },
+        "createdAt": { "type": "number" },
+        "listingsCountToday": { "type": "number" }
+      },
+      "required": ["uid", "name", "email", "phone", "createdAt"]
+    },
+    "Product": {
+      "title": "Product",
+      "type": "object",
+      "properties": {
+        "title": { "type": "string" },
+        "description": { "type": "string" },
+        "price": { "type": "number" },
+        "isPriceNegotiable": { "type": "boolean" },
+        "images": { "type": "array" },
+        "sellerId": { "type": "string" },
+        "sellerName": { "type": "string" },
+        "sellerEmail": { "type": "string" },
+        "sellerPhone": { "type": "string" },
+        "createdAt": { "type": "number" },
+        "expiresAt": { "type": "number" },
+        "status": { "type": "string" },
+        "contactClicks": { "type": "number" },
+        "views": { "type": "number" }
+      },
+      "required": ["title", "price", "sellerId", "createdAt", "status"]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": { "$ref": "#/entities/User" },
+      "description": "Registered IITDH students"
+    },
+    "/products/{productId}": {
+      "schema": { "$ref": "#/entities/Product" },
+      "description": "Items listed for sale"
+    }
+  }
+}
