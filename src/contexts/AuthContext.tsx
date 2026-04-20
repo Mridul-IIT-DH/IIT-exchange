@@ -17,6 +17,7 @@ interface UserProfile {
 interface AuthContextType {
   user: User | null;
   profile: UserProfile | null;
+  isAdmin: boolean;
   loading: boolean;
   signIn: () => Promise<void>;
   logout: () => Promise<void>;
@@ -28,9 +29,10 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [profile, setProfile] = useState<UserProfile | null>(null);
+  const [isAdmin, setIsAdmin] = useState(false);
   const [loading, setLoading] = useState(true);
 
-  const fetchProfile = async (uid: string) => {
+  const fetchProfile = async (uid: string, email: string) => {
     try {
       const docRef = doc(db, 'users', uid);
       const docSnap = await getDoc(docRef);
@@ -39,9 +41,23 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       } else {
         setProfile(null);
       }
+
+      // Check if user is admin
+      // Priority 1: User email cs24mt002@iitdh.ac.in
+      if (email === 'cs24mt002@iitdh.ac.in') {
+        console.log("Admin detected by hardcoded email:", email);
+        setIsAdmin(true);
+      } else {
+        // Fallback: Check admins collection
+        const adminSnap = await getDoc(doc(db, 'admins', uid));
+        const adminExists = adminSnap.exists();
+        console.log(`Admin check for ${email}: ${adminExists ? 'FOUND' : 'NOT FOUND'} in database`);
+        setIsAdmin(adminExists);
+      }
     } catch (error) {
       console.error("Error fetching profile:", error);
       setProfile(null);
+      setIsAdmin(false);
     }
   };
 
@@ -51,15 +67,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         // Enforce IITDH domain logic even on re-auth strictly
         if (firebaseUser.email?.endsWith('@iitdh.ac.in')) {
           setUser(firebaseUser);
-          await fetchProfile(firebaseUser.uid);
+          await fetchProfile(firebaseUser.uid, firebaseUser.email);
         } else {
           await auth.signOut();
           setUser(null);
           setProfile(null);
+          setIsAdmin(false);
         }
       } else {
         setUser(null);
         setProfile(null);
+        setIsAdmin(false);
       }
       setLoading(false);
     });
@@ -90,15 +108,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const logout = async () => {
     await signOut(auth);
     setProfile(null);
+    setIsAdmin(false);
     toast.success('Logged out successfully');
   };
 
   const refreshProfile = async () => {
-    if (user) await fetchProfile(user.uid);
+    if (user && user.email) await fetchProfile(user.uid, user.email);
   };
 
   return (
-    <AuthContext.Provider value={{ user, profile, loading, signIn, logout, refreshProfile }}>
+    <AuthContext.Provider value={{ user, profile, isAdmin, loading, signIn, logout, refreshProfile }}>
       {children}
     </AuthContext.Provider>
   );

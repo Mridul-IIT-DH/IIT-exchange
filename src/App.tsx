@@ -10,6 +10,7 @@ import Dashboard from './pages/Dashboard';
 import About from './pages/About';
 import Terms from './pages/Terms';
 import Contact from './pages/Contact';
+import Admin from './pages/Admin';
 
 export default function App() {
   return (
@@ -26,6 +27,7 @@ export default function App() {
             <Route path="about" element={<About />} />
             <Route path="terms" element={<Terms />} />
             <Route path="contact" element={<Contact />} />
+            <Route path="admin" element={<Admin />} />
           </Route>
         </Routes>
       </Router>

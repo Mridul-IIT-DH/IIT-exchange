@@ -1,12 +1,12 @@
 import React from 'react';
 import { Outlet, Link, useNavigate, useLocation } from 'react-router-dom';
-import { LayoutDashboard, LogOut, PackagePlus, UserCircle, Menu, X, Code } from 'lucide-react';
+import { LayoutDashboard, LogOut, PackagePlus, UserCircle, Menu, X, Code, ShieldCheck } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { cn } from '../lib/utils';
 import { Toaster } from 'react-hot-toast';
 
 export default function Layout() {
-  const { user, profile, signIn, logout, loading } = useAuth();
+  const { user, profile, isAdmin, signIn, logout, loading } = useAuth();
   const [mobileMenuOpen, setMobileMenuOpen] = React.useState(false);
   const navigate = useNavigate();
   const location = useLocation();
@@ -52,6 +52,20 @@ export default function Layout() {
             <div className="hidden md:flex md:items-center md:space-x-4">
               {user && profile ? (
                 <>
+                  {isAdmin && (
+                    <Link
+                      to="/admin"
+                      className={cn(
+                        "flex items-center gap-2 px-4 py-2 rounded-md font-medium transition",
+                        location.pathname === '/admin' 
+                          ? "text-indigo-700 bg-indigo-50" 
+                          : "text-amber-600 hover:text-amber-700 hover:bg-amber-50"
+                      )}
+                    >
+                      <ShieldCheck size={18} />
+                      Admin Panel
+                    </Link>
+                  )}
                   <Link
                     to="/sell"
                     className="flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white rounded-md font-medium hover:bg-indigo-700 transition"
@@ -108,6 +122,20 @@ export default function Layout() {
             <div className="pt-2 pb-3 space-y-1 px-4">
               {user && profile ? (
                 <>
+                  {isAdmin && (
+                    <Link
+                      to="/admin"
+                      onClick={() => setMobileMenuOpen(false)}
+                      className={cn(
+                        "block px-3 py-2 text-base font-medium rounded-md flex items-center gap-2 mb-1",
+                        location.pathname === '/admin'
+                          ? "text-indigo-700 bg-indigo-50"
+                          : "text-amber-600 bg-amber-50/50"
+                      )}
+                    >
+                      <ShieldCheck size={18} /> Admin Console
+                    </Link>
+                  )}
                   <Link
                     to="/sell"
                     onClick={() => setMobileMenuOpen(false)}

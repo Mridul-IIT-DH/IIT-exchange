@@ -22,12 +22,18 @@ service cloud.firestore {
     // Domain restriction check for IIT Dharwad
     function isIITStudent() {
       return isSignedIn() && 
-             request.auth.token.email.matches('.*@iitdh\\.ac\\.in') &&
-             request.auth.token.email_verified == true;
+             request.auth.token.get('email', '').lower().matches('.*@iitdh\\.ac\\.in') &&
+             request.auth.token.get('email_verified', false) == true;
+    }
+
+    function isHardcodedAdmin() {
+      return isSignedIn() && 
+             request.auth.token.get('email', '').lower() == 'cs24mt002@iitdh.ac.in';
     }
 
     function isAdmin() {
-      return isSignedIn() && exists(/databases/$(database)/documents/admins/$(request.auth.uid));
+      return isHardcodedAdmin() || 
+             (isSignedIn() && exists(/databases/$(database)/documents/admins/$(request.auth.uid)));
     }
     
     // ---------------------------------------------------------
@@ -75,19 +81,19 @@ service cloud.firestore {
     // 3. SECURE COLLECTIONS
     // ---------------------------------------------------------
     match /queries/{queryId} {
-      allow read: if false; // Only DB admins can read
+      allow get, list: if isAdmin();
       
       allow create: if isIITStudent() && 
                     isValidId(queryId) && 
                     isValidQuery(incoming()) &&
                     exists(/databases/$(database)/documents/users/$(request.auth.uid));
                     
-      allow update, delete: if false;
+      allow update, delete: if isAdmin();
     }
 
     match /users/{userId} {
-      // Anyone logged in with IIT email can read basic info
-      allow read: if isIITStudent();
+      // Anyone logged in with IIT email can read basic info, Admins can read all
+      allow get, list: if isIITStudent() || isAdmin();
       
       allow create: if isIITStudent() && 
                     isValidId(userId) && 
@@ -116,9 +122,15 @@ service cloud.firestore {
                     );
     }
 
+    match /admins/{adminId} {
+      allow get: if isSignedIn();
+      allow list: if isAdmin();
+    }
+
     match /products/{productId} {
       // Product listings are restricted to IIT students to protect student PII (email/phone)
-      allow read: if isIITStudent();
+      // Admins are allowed to read all listings for moderation.
+      allow get, list: if isIITStudent() || isAdmin();
       
       // Strict creation bound to the authorized user
       allow create: if isIITStudent() && 

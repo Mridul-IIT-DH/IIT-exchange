@@ -42,6 +42,20 @@
         "views": { "type": "number" }
       },
       "required": ["title", "price", "sellerId", "createdAt", "status"]
+    },
+    "Query": {
+      "title": "Support Query",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "userId": { "type": "string" },
+        "userName": { "type": "string" },
+        "userEmail": { "type": "string" },
+        "subject": { "type": "string" },
+        "message": { "type": "string" },
+        "createdAt": { "type": "number" },
+        "status": { "type": "string", "enum": ["new", "resolved"] }
+      }
     }
   },
   "firestore": {
@@ -56,6 +70,10 @@
     "/admins/{adminId}": {
       "schema": { "$ref": "#/entities/Admin" },
       "description": "Hard-coded admin permission document"
+    },
+    "/queries/{queryId}": {
+      "schema": { "$ref": "#/entities/Query" },
+      "description": "Support queries and feedback"
     }
   }
 }
