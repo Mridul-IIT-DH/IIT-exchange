@@ -6,7 +6,7 @@ import { Readable } from "stream";
 import path from "path";
 import { fileURLToPath } from "url";
 import dotenv from "dotenv";
-import * as admin from "firebase-admin";
+import admin from "firebase-admin";
 
 // Load environment variables for development
 dotenv.config();
@@ -17,11 +17,16 @@ const __dirname = path.dirname(__filename);
 const upload = multer({ storage: multer.memoryStorage() });
 
 // Enterprise Security: Initialize Firebase Admin for authenticating backend requests.
-// By defining the projectId, we can use verifyIdToken() to validate Google-signed JWTs 
-// without needing a highly sensitive Service Account private key on the server.
-admin.initializeApp({
-  projectId: "iit-exchange-368e9"
-});
+// We wrap this in a try-catch to prevent "App already exists" errors during hot-restarts
+try {
+  admin.initializeApp({
+    projectId: "iit-exchange-368e9"
+  });
+} catch (error: any) {
+  if (!/already exists/.test(error.message)) {
+    console.error('Firebase admin initialization error', error);
+  }
+}
 
 async function requireAuth(req: express.Request, res: express.Response, next: express.NextFunction) {
   const authHeader = req.headers.authorization;
