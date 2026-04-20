@@ -23,7 +23,9 @@ const upload = multer({
 // Enterprise Security: Initialize Firebase Admin for authenticating backend requests.
 try {
   if (admin.apps.length === 0) {
-    admin.initializeApp();
+    admin.initializeApp({
+      projectId: "iit-exchange-368e9"
+    });
     console.log("Firebase Admin initialized successfully.");
   }
 } catch (error: any) {
@@ -58,13 +60,14 @@ async function requireAuth(req: express.Request, res: express.Response, next: ex
     
     // Strict domain enforcement on all API endpoints
     if (!decodedToken.email?.endsWith('@iitdh.ac.in')) {
+      console.warn(`Auth failed: Non-IITD domain (${decodedToken.email})`);
       return res.status(403).json({ error: "Forbidden: Not an IITD domain" });
     }
     
     (req as any).user = decodedToken;
     next();
-  } catch (error) {
-    console.error("Token verification failed:", error);
+  } catch (error: any) {
+    console.error("Token verification failed details:", error.message);
     return res.status(401).json({ error: "Unauthorized: Invalid token" });
   }
 }
