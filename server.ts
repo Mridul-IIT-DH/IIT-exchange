@@ -58,10 +58,15 @@ async function requireAuth(req: express.Request, res: express.Response, next: ex
   try {
     const decodedToken = await admin.auth().verifyIdToken(idToken);
     
-    // Strict domain enforcement on all API endpoints
+    // Strict domain enforcement and verification check on all API endpoints
     if (!decodedToken.email?.endsWith('@iitdh.ac.in')) {
       console.warn(`Auth failed: Non-IITD domain (${decodedToken.email})`);
       return res.status(403).json({ error: "Forbidden: Not an IITD domain" });
+    }
+
+    if (decodedToken.email_verified !== true) {
+      console.warn(`Auth failed: Email not verified (${decodedToken.email})`);
+      return res.status(403).json({ error: "Forbidden: Email not verified" });
     }
     
     (req as any).user = decodedToken;

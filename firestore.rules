@@ -21,7 +21,9 @@ service cloud.firestore {
     
     // Domain restriction check for IIT Dharwad
     function isIITStudent() {
-      return isSignedIn() && request.auth.token.email.matches('.*@iitdh\\.ac\\.in');
+      return isSignedIn() && 
+             request.auth.token.email.matches('.*@iitdh\\.ac\\.in') &&
+             request.auth.token.email_verified == true;
     }
 
     function isAdmin() {
@@ -44,15 +46,16 @@ service cloud.firestore {
     }
 
     function isValidProduct(data) {
-      return data.keys().hasAll(['id', 'title', 'description', 'price', 'isPriceNegotiable', 'images', 'sellerId', 'sellerName', 'sellerEmail', 'sellerPhone', 'createdAt', 'expiresAt', 'status', 'contactClicks', 'views']) &&
+      return data.keys().hasAll(['id', 'title', 'description', 'price', 'isPriceNegotiable', 'images', 'sellerId', 'sellerName', 'sellerEmail', 'sellerPhone', 'createdAt', 'expiresAt', 'status', 'contactClicks', 'views', 'updatedAt']) &&
         data.keys().size() >= 15 && data.keys().size() <= 17 &&
         data.id is string &&
-        data.title is string && data.title.size() > 0 && data.title.size() <= 150 &&
-        data.description is string && data.description.size() <= 2000 &&
+        data.title is string && data.title.size() > 0 && data.title.size() <= 100 &&
+        data.description is string && data.description.size() <= 1000 &&
         data.price is number && data.price >= 0 &&
         data.isPriceNegotiable is bool &&
         data.images is list && data.images.size() <= 5 &&
-        data.sellerId is string && data.sellerId == request.auth.uid;
+        data.sellerId is string && data.sellerId == request.auth.uid &&
+        data.updatedAt is number;
     }
 
     function isValidQuery(data) {
@@ -114,8 +117,8 @@ service cloud.firestore {
     }
 
     match /products/{productId} {
-      // Product listings are public (UI restricts contact info)
-      allow read: if true;
+      // Product listings are restricted to IIT students to protect student PII (email/phone)
+      allow read: if isIITStudent();
       
       // Strict creation bound to the authorized user
       allow create: if isIITStudent() && 

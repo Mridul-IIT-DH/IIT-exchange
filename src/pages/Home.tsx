@@ -131,6 +131,20 @@ export default function Home() {
               <div key={i} className="animate-pulse bg-white rounded-xl shadow-sm border border-gray-100 h-72"></div>
             ))}
           </div>
+        ) : !user ? (
+          <div className="text-center py-20 bg-white rounded-2xl border border-gray-200 border-dashed max-w-2xl mx-auto">
+            <PackageSearch size={48} className="mx-auto text-indigo-400 mb-4" />
+            <h3 className="text-xl font-bold text-gray-900">Campus Access Only</h3>
+            <p className="text-gray-500 mt-2 max-w-md mx-auto">
+              This is a private marketplace for IIT Dharwad. Please sign in with your student email to view and post listings.
+            </p>
+            <button 
+              onClick={signIn}
+              className="mt-6 px-8 py-3 bg-indigo-600 text-white font-bold rounded-lg hover:bg-indigo-700 transition shadow-sm"
+            >
+              Sign In with Google
+            </button>
+          </div>
         ) : filteredProducts.length === 0 ? (
           <div className="text-center py-20 bg-white rounded-xl border border-gray-200 border-dashed">
             <PackageSearch size={48} className="mx-auto text-gray-400 mb-4" />

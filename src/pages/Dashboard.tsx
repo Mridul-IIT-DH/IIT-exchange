@@ -175,9 +175,6 @@ export default function Dashboard() {
           <h1 className="text-3xl font-bold tracking-tight">User Dashboard</h1>
           <p className="text-gray-500 mt-1">Manage your activity and profile</p>
         </div>
-        <Link to="/sell" className="w-full sm:w-auto text-center px-6 py-2.5 bg-indigo-600 text-white rounded-lg font-bold hover:bg-indigo-700 transition shadow-sm">
-          Sell New Item
-        </Link>
       </div>
 
       {/* Main Tabs */}
