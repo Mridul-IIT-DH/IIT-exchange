@@ -1,17 +1,53 @@
 import React, { useEffect, useState } from 'react';
-import { collection, query, where, orderBy, getDocs, limit } from 'firebase/firestore';
+import { collection, query, where, orderBy, getDocs, limit, doc, updateDoc, arrayUnion, arrayRemove } from 'firebase/firestore';
 import { Link, useNavigate } from 'react-router-dom';
 import { db } from '../lib/firebase';
 import { useAuth } from '../contexts/AuthContext';
 import { formatDistanceToNow } from 'date-fns';
-import { PackageSearch, IndianRupee, Search } from 'lucide-react';
+import { PackageSearch, IndianRupee, Search, Heart } from 'lucide-react';
+import toast from 'react-hot-toast';
 
 export default function Home() {
   const [products, setProducts] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
-  const { user, profile, signIn } = useAuth();
+  const { user, profile, signIn, refreshProfile } = useAuth();
   const navigate = useNavigate();
+  const [wishlistLoadingId, setWishlistLoadingId] = useState<string | null>(null);
+
+  const toggleWishlist = async (e: React.MouseEvent, productId: string) => {
+    e.preventDefault();
+    e.stopPropagation();
+
+    if (!user) {
+      toast.error('Please sign in to save to wishlist');
+      return;
+    }
+
+    setWishlistLoadingId(productId);
+    try {
+      const userRef = doc(db, 'users', user.uid);
+      const isInWishlist = profile?.wishlist?.includes(productId);
+
+      if (isInWishlist) {
+        await updateDoc(userRef, {
+          wishlist: arrayRemove(productId)
+        });
+        toast.success('Removed from wishlist');
+      } else {
+        await updateDoc(userRef, {
+          wishlist: arrayUnion(productId)
+        });
+        toast.success('Added to wishlist');
+      }
+      await refreshProfile();
+    } catch (error) {
+      console.error(error);
+      toast.error('Failed to update wishlist');
+    } finally {
+      setWishlistLoadingId(null);
+    }
+  };
 
   useEffect(() => {
     const fetchProducts = async () => {
@@ -125,11 +161,24 @@ export default function Home() {
                     </div>
                   )}
                   {/* Tags */}
-                  <div className="absolute top-2 left-2 flex gap-1">
+                  <div className="absolute top-2 left-2 flex gap-1 z-10">
                     {Date.now() - product.createdAt < 24 * 60 * 60 * 1000 && (
-                      <span className="bg-green-500 text-white text-xs font-bold px-2 py-1 rounded">New</span>
+                      <span className="bg-green-500 text-white text-[10px] uppercase font-bold px-2 py-0.5 rounded shadow-sm">New</span>
                     )}
                   </div>
+
+                  {/* Wishlist Toggle */}
+                  <button
+                    onClick={(e) => toggleWishlist(e, product.id)}
+                    disabled={wishlistLoadingId === product.id}
+                    className={`absolute top-2 right-2 p-2 rounded-full backdrop-blur-md transition-all z-10 shadow-sm ${
+                      profile?.wishlist?.includes(product.id)
+                        ? 'bg-red-500 text-white'
+                        : 'bg-black/20 text-white hover:bg-black/40'
+                    }`}
+                  >
+                    <Heart size={16} fill={profile?.wishlist?.includes(product.id) ? "currentColor" : "none"} />
+                  </button>
                 </div>
                 <div className="p-4 flex-1 flex flex-col">
                   <h3 className="text-lg font-medium text-gray-900 line-clamp-1 group-hover:text-indigo-600 transition">

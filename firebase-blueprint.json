@@ -1,20 +1,29 @@
 {
   "entities": {
     "User": {
-      "title": "User",
+      "title": "User Profile",
       "type": "object",
       "properties": {
-        "uid": { "type": "string" },
-        "name": { "type": "string" },
-        "email": { "type": "string" },
-        "phone": { "type": "string" },
-        "createdAt": { "type": "number" },
-        "listingsCountToday": { "type": "number" }
+        "uid": { "type": "string", "description": "Unique Firebase Auth UID" },
+        "name": { "type": "string", "description": "Full student name from Google" },
+        "email": { "type": "string", "description": "Primary @iitdh.ac.in email" },
+        "phone": { "type": "string", "description": "WhatsApp/Contact number" },
+        "createdAt": { "type": "number", "description": "Timestamp of profile creation" },
+        "listingsCountToday": { "type": "number", "description": "Daily anti-spam counter" },
+        "wishlist": { "type": "array", "description": "Array of saved product IDs" }
       },
-      "required": ["uid", "name", "email", "phone", "createdAt"]
+      "required": ["uid", "name", "email", "phone", "createdAt", "wishlist"]
+    },
+    "Admin": {
+      "title": "Admin Permission",
+      "type": "object",
+      "properties": {
+        "email": { "type": "string" },
+        "role": { "type": "string", "enum": ["super", "moderator"] }
+      }
     },
     "Product": {
-      "title": "Product",
+      "title": "Marketplace Listing",
       "type": "object",
       "properties": {
         "title": { "type": "string" },
@@ -28,7 +37,7 @@
         "sellerPhone": { "type": "string" },
         "createdAt": { "type": "number" },
         "expiresAt": { "type": "number" },
-        "status": { "type": "string" },
+        "status": { "type": "string", "enum": ["active", "sold", "expired"] },
         "contactClicks": { "type": "number" },
         "views": { "type": "number" }
       },
@@ -38,11 +47,15 @@
   "firestore": {
     "/users/{userId}": {
       "schema": { "$ref": "#/entities/User" },
-      "description": "Registered IITDH students"
+      "description": "User profile data including wishlist"
     },
     "/products/{productId}": {
       "schema": { "$ref": "#/entities/Product" },
-      "description": "Items listed for sale"
+      "description": "Public marketplace items"
+    },
+    "/admins/{adminId}": {
+      "schema": { "$ref": "#/entities/Admin" },
+      "description": "Hard-coded admin permission document"
     }
   }
 }

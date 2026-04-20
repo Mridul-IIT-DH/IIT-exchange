@@ -1,16 +1,16 @@
 import React, { useEffect, useState } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
-import { doc, getDoc, updateDoc, deleteDoc, increment } from 'firebase/firestore';
+import { doc, getDoc, updateDoc, deleteDoc, increment, arrayUnion, arrayRemove } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 import { useAuth } from '../contexts/AuthContext';
-import { IndianRupee, ShieldAlert, Phone, Mail, ChevronLeft, ChevronRight, Eye, MousePointerClick, ShieldCheck } from 'lucide-react';
+import { IndianRupee, ShieldAlert, Phone, Mail, ChevronLeft, ChevronRight, Eye, MousePointerClick, ShieldCheck, Heart } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 import toast from 'react-hot-toast';
 
 export default function ProductDetail() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const { user, profile } = useAuth();
+  const { user, profile, refreshProfile } = useAuth();
   const [product, setProduct] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [currentImageIdx, setCurrentImageIdx] = useState(0);
@@ -18,13 +18,41 @@ export default function ProductDetail() {
   const [revealing, setRevealing] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [isAdminUser, setIsAdminUser] = useState(false);
+  const [wishlistLoading, setWishlistLoading] = useState(false);
+
+  const isInWishlist = profile?.wishlist?.includes(id || '');
+
+  const toggleWishlist = async () => {
+    if (!user) {
+      toast.error('Please sign in to save to wishlist');
+      return;
+    }
+    setWishlistLoading(true);
+    try {
+      const userRef = doc(db, 'users', user.uid);
+      if (isInWishlist) {
+        await updateDoc(userRef, {
+          wishlist: arrayRemove(id)
+        });
+        toast.success('Removed from wishlist');
+      } else {
+        await updateDoc(userRef, {
+          wishlist: arrayUnion(id)
+        });
+        toast.success('Added to wishlist');
+      }
+      await refreshProfile();
+    } catch (error) {
+      console.error(error);
+      toast.error('Failed to update wishlist');
+    } finally {
+      setWishlistLoading(false);
+    }
+  };
 
   useEffect(() => {
     if (!id) return;
     
-    // Attempt to silently check if user is admin (only admins can read the admins doc per pure rule implementation)
-    // Wait, our rules say only exists() can be used so reading might fail for non-admins if not set up, 
-    // actually, let's just assume the user configures their own state or we catch the error 
     const checkAdminStatus = async () => {
       if (!user) return;
       try {
@@ -46,11 +74,8 @@ export default function ProductDetail() {
         if (docSnap.exists()) {
           setProduct({ id: docSnap.id, ...docSnap.data() });
           
-          // Increment view count if someone else is viewing AND they are authenticated
-          // (Our firestore rules currently restrict updates to authenticated users)
           if (user && docSnap.data().sellerId !== user?.uid) {
             updateDoc(docRef, { views: increment(1) }).catch(e => {
-              // Silently catch permission errors so they don't look like app crashes to the user
               if (e.code !== 'permission-denied') {
                 console.error("View increment error:", e);
               }
@@ -171,7 +196,7 @@ export default function ProductDetail() {
           {/* Right: Details */}
           <div className="py-6 px-6 md:pl-0 lg:pr-8 flex flex-col">
             <div className="flex justify-between items-start gap-4">
-              <div>
+              <div className="flex-1">
                 <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 tracking-tight">
                   {product.title}
                 </h1>
@@ -179,12 +204,41 @@ export default function ProductDetail() {
                   Listed {formatDistanceToNow(product.createdAt, { addSuffix: true })}
                 </p>
               </div>
-              <span className={`px-3 py-1 text-xs font-bold uppercase tracking-wider rounded-full ${
-                product.status === 'active' ? 'bg-green-100 text-green-800' :
-                product.status === 'sold' ? 'bg-gray-100 text-gray-800' : 'bg-red-100 text-red-800'
-              }`}>
-                {product.status}
-              </span>
+              <div className="flex items-center gap-3">
+                <button
+                  onClick={toggleWishlist}
+                  disabled={wishlistLoading}
+                  className={`p-2.5 rounded-full border transition hidden sm:flex ${
+                    isInWishlist 
+                      ? 'bg-red-50 border-red-200 text-red-500 hover:bg-red-100' 
+                      : 'bg-white border-gray-200 text-gray-400 hover:text-gray-600 hover:bg-gray-50'
+                  }`}
+                  title={isInWishlist ? "Remove from wishlist" : "Add to wishlist"}
+                >
+                  <Heart size={22} fill={isInWishlist ? "currentColor" : "none"} />
+                </button>
+                <span className={`px-3 py-1 text-xs font-bold uppercase tracking-wider rounded-full ${
+                  product.status === 'active' ? 'bg-green-100 text-green-800' :
+                  product.status === 'sold' ? 'bg-gray-100 text-gray-800' : 'bg-red-100 text-red-800'
+                }`}>
+                  {product.status}
+                </span>
+              </div>
+            </div>
+
+            <div className="mt-4 sm:hidden">
+               <button
+                  onClick={toggleWishlist}
+                  disabled={wishlistLoading}
+                  className={`flex items-center justify-center gap-2 w-full py-2.5 rounded-lg border transition ${
+                    isInWishlist 
+                      ? 'bg-red-50 border-red-200 text-red-500' 
+                      : 'bg-white border-gray-200 text-gray-600'
+                  }`}
+                >
+                  <Heart size={18} fill={isInWishlist ? "currentColor" : "none"} />
+                  {isInWishlist ? 'In Wishlist' : 'Add to Wishlist'}
+                </button>
             </div>
 
             <div className="mt-6 flex items-end gap-3">

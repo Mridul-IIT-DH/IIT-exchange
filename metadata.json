@@ -1,6 +1,13 @@
 {
-  "name": "IIT Exchange",
-  "description": "Private marketplace for IIT Dharwad students.",
-  "requestFramePermissions": [],
-  "majorCapabilities": []
+  "name": "IIT Exchange Marketplace",
+  "description": "The official enterprise-grade marketplace for IIT Dharwad students. Securely buy and sell books, electronics, cycles, and more within the campus community.",
+  "requestFramePermissions": [
+    "camera"
+  ],
+  "majorCapabilities": [
+    "Marketplace",
+    "Admin Dashboard",
+    "Wishlist System",
+    "IITDH Auth"
+  ]
 }

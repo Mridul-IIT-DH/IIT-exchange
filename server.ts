@@ -7,6 +7,7 @@ import path from "path";
 import { fileURLToPath } from "url";
 import dotenv from "dotenv";
 import admin from "firebase-admin";
+import rateLimit from "express-rate-limit";
 
 // Load environment variables for development
 dotenv.config();
@@ -14,19 +15,36 @@ dotenv.config();
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-const upload = multer({ storage: multer.memoryStorage() });
+const upload = multer({ 
+  storage: multer.memoryStorage(),
+  limits: { fileSize: 5 * 1024 * 1024 } // 5MB limit
+});
 
 // Enterprise Security: Initialize Firebase Admin for authenticating backend requests.
-// We wrap this in a try-catch to prevent "App already exists" errors during hot-restarts
 try {
-  admin.initializeApp({
-    projectId: "iit-exchange-368e9"
-  });
-} catch (error: any) {
-  if (!/already exists/.test(error.message)) {
-    console.error('Firebase admin initialization error', error);
+  if (admin.apps.length === 0) {
+    admin.initializeApp();
+    console.log("Firebase Admin initialized successfully.");
   }
+} catch (error: any) {
+  console.error("Firebase admin initialization error:", error);
 }
+
+// Enterprise Protection: Global Rate Limiter
+const apiLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 100, // limit each IP to 100 requests per windowMs
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: "Too many requests. Please try again later." }
+});
+
+// Stricter limiter for image uploads
+const uploadLimiter = rateLimit({
+  windowMs: 60 * 60 * 1000, // 1 hour
+  max: 30, // limit each IP to 30 uploads per hour
+  message: { error: "Hourly upload limit reached." }
+});
 
 async function requireAuth(req: express.Request, res: express.Response, next: express.NextFunction) {
   const authHeader = req.headers.authorization;
@@ -37,10 +55,12 @@ async function requireAuth(req: express.Request, res: express.Response, next: ex
   const idToken = authHeader.split('Bearer ')[1];
   try {
     const decodedToken = await admin.auth().verifyIdToken(idToken);
-    // (Optional) Enforce the @iitdh.ac.in domain on the backend level too
+    
+    // Strict domain enforcement on all API endpoints
     if (!decodedToken.email?.endsWith('@iitdh.ac.in')) {
       return res.status(403).json({ error: "Forbidden: Not an IITD domain" });
     }
+    
     (req as any).user = decodedToken;
     next();
   } catch (error) {
@@ -51,7 +71,7 @@ async function requireAuth(req: express.Request, res: express.Response, next: ex
 
 async function startServer() {
   const app = express();
-  const PORT = 3000;
+  const PORT = Number(process.env.PORT) || 3000;
 
   app.use(express.json());
 
@@ -63,7 +83,7 @@ async function startServer() {
   });
 
   // API Route to upload image to Cloudinary (secure signed upload via server)
-  app.post("/api/images/upload", requireAuth, upload.single("file"), async (req, res) => {
+  app.post("/api/images/upload", apiLimiter, uploadLimiter, requireAuth, upload.single("file"), async (req, res) => {
     try {
       if (!req.file) {
         return res.status(400).json({ error: "No image file provided" });
@@ -74,7 +94,13 @@ async function startServer() {
       }
 
       const uploadStream = cloudinary.uploader.upload_stream(
-        { folder: "iit-exchange" },
+        { 
+          folder: "iit-exchange",
+          transformation: [
+            { width: 1200, height: 900, crop: "limit" },
+            { quality: "auto" }
+          ]
+        },
         (error, result) => {
           if (error) {
             console.error("Cloudinary upload stream error:", error);
@@ -92,7 +118,7 @@ async function startServer() {
   });
 
   // API Route to delete image from Cloudinary
-  app.post("/api/images/delete", requireAuth, async (req, res) => {
+  app.post("/api/images/delete", apiLimiter, requireAuth, async (req, res) => {
     try {
       const { imageUrl } = req.body;
       
@@ -100,24 +126,13 @@ async function startServer() {
         return res.status(400).json({ error: "Missing imageUrl" });
       }
 
-      // Extract the Cloudinary public_id from the URL
-      // E.g. https://res.cloudinary.com/cloud_name/image/upload/v12345/presets/abc123_.jpg
-      // This regex extracts the string after /upload/ (ignoring version) and removes the extension
+      // Pattern match to extract Public ID from URL
       const urlParts = imageUrl.split('/');
-      const filenameWithExtension = urlParts[urlParts.length - 1];
-      const publicId = filenameWithExtension.split('.')[0];
-      
-      // If using folders, they won't be captured strictly by this simplistic extraction
-      // A better way is to find everything after the folder/prefix we use, but for unsigned presets, 
-      // usually it uploads to the root or a preset folder. 
-      // A more robust method for cloudinary URLs:
-      // https://res.cloudinary.com/<cloud_name>/image/upload/[v_version]/<public_id>.<ext>
       const uploadIdx = urlParts.findIndex(part => part === 'upload');
       if (uploadIdx === -1) {
           return res.status(400).json({ error: "Invalid Cloudinary URL" });
       }
       
-      // Usually, the next part is version (e.g. v1612... ) or directly the public_id
       let startIdx = uploadIdx + 1;
       if (urlParts[startIdx].match(/^v\d+$/)) {
           startIdx += 1;
@@ -135,7 +150,6 @@ async function startServer() {
       }
 
       await cloudinary.uploader.destroy(fullPublicId);
-      
       res.json({ success: true, publicId: fullPublicId });
     } catch (error: any) {
       console.error("Cloudinary delete error:", error);

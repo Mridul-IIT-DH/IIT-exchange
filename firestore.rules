@@ -91,7 +91,7 @@ service cloud.firestore {
                     userId == request.auth.uid && 
                     isValidUser(incoming());
                     
-      // Allow user to update only their phone profile info OR listings limit
+      // Allow user to update only their phone profile info OR listings limit OR wishlist
       allow update: if isIITStudent() && 
                     userId == request.auth.uid && 
                     isValidUser(incoming()) &&
@@ -99,6 +99,11 @@ service cloud.firestore {
                       // Updating phone setting
                       (
                         incoming().diff(existing()).affectedKeys().hasOnly(['phone'])
+                      )
+                      ||
+                      // Updating wishlist
+                      (
+                        incoming().diff(existing()).affectedKeys().hasOnly(['wishlist'])
                       )
                       ||
                       // Incrementing their listings tracker
