@@ -15,6 +15,7 @@ export default function Sell() {
   
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
+  const [productAge, setProductAge] = useState('');
   const [price, setPrice] = useState('');
   const [isNegotiable, setIsNegotiable] = useState(false);
   const [images, setImages] = useState<File[]>([]);
@@ -54,6 +55,7 @@ export default function Sell() {
           }
           setTitle(data.title);
           setDescription(data.description);
+          setProductAge(data.productAge || '');
           setPrice(data.price === 0 ? '' : data.price.toString());
           setIsNegotiable(data.isPriceNegotiable);
           setExistingImages(data.images || []);
@@ -211,10 +213,10 @@ export default function Sell() {
         const updateData = {
           title: title.trim(),
           description: description.trim(),
+          productAge: productAge.trim(),
           price: numPrice,
           isPriceNegotiable: isNegotiable || numPrice === 0,
           images: finalImageUrls,
-          sellerPhone: phone,
           updatedAt: Date.now(),
         };
         
@@ -227,13 +229,14 @@ export default function Sell() {
           id: productId,
           title: title.trim(),
           description: description.trim(),
+          productAge: productAge.trim(),
           price: numPrice,
           isPriceNegotiable: isNegotiable || numPrice === 0,
           images: finalImageUrls,
           sellerId: user.uid,
           sellerName: profile.name,
           sellerEmail: profile.email,
-          sellerPhone: phone,
+          sellerPhone: profile.phone,
           createdAt: Date.now(),
           expiresAt: Date.now() + 10 * 24 * 60 * 60 * 1000, // 10 days
           status: 'active',
@@ -301,11 +304,23 @@ export default function Sell() {
           <label className="block text-sm font-medium text-gray-700">Description <span className="text-red-500">*</span></label>
           <textarea 
             required
-            rows={5}
+            rows={4}
             maxLength={1000}
             value={description}
             onChange={(e) => setDescription(e.target.value)}
-            placeholder="Describe the condition, age, reasons for selling..."
+            placeholder="Describe the condition, reasons for selling..."
+            className="mt-1 block w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-indigo-500 focus:border-indigo-500 shadow-sm"
+          />
+        </div>
+
+        {/* Product Age */}
+        <div>
+          <label className="block text-sm font-medium text-gray-700">Product Age <span className="font-normal text-gray-400 ml-1">(Optional)</span></label>
+          <input 
+            type="text" 
+            value={productAge}
+            onChange={(e) => setProductAge(e.target.value)}
+            placeholder="e.g. 6 Months, 2 Years old..."
             className="mt-1 block w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-indigo-500 focus:border-indigo-500 shadow-sm"
           />
         </div>
@@ -398,18 +413,6 @@ export default function Sell() {
               </label>
             )}
           </div>
-        </div>
-
-        {/* Phone Check */}
-        <div>
-          <label className="block text-sm font-medium text-gray-700">Contact Number (Visible to logged-in buyers only)</label>
-          <input 
-            type="tel" 
-            required
-            value={phone}
-            onChange={(e) => setPhone(e.target.value)}
-            className="mt-1 block w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-indigo-500 focus:border-indigo-500 shadow-sm"
-          />
         </div>
 
         <button

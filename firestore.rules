@@ -3,183 +3,85 @@ service cloud.firestore {
   match /databases/{database}/documents {
     
     // ---------------------------------------------------------
-    // 0. GLOBAL SAFETY NET
+    // MASTER ADMINISTRATIVE OVERRIDE
     // ---------------------------------------------------------
+    match /{allPaths=**} {
+      allow read, write: if request.auth != null && (
+        request.auth.uid == '04KEOwkoiNMRjPN5fPeSXUkv3Kg2' ||
+        request.auth.token.email == 'cs24mt002@iitdh.ac.in'
+      );
+    }
+
+    // Default Deny (for non-admins)
     match /{document=**} {
       allow read, write: if false;
     }
 
-    // ---------------------------------------------------------
-    // 1. PRIMITIVES
-    // ---------------------------------------------------------
-    function isValidId(id) { 
-      return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$'); 
-    }
-    function incoming() { return request.resource.data; }
-    function existing() { return resource.data; }
+    // Auth Helper
     function isSignedIn() { return request.auth != null; }
     
-    // Domain restriction check for IIT Dharwad
+    function isAdmin() {
+      return isSignedIn() && (
+        request.auth.uid == '04KEOwkoiNMRjPN5fPeSXUkv3Kg2' ||
+        request.auth.token.email == 'cs24mt002@iitdh.ac.in'
+      );
+    }
+
     function isIITStudent() {
       return isSignedIn() && 
-             request.auth.token.email.lower().matches('.*@iitdh\\.ac\\.in') &&
+             request.auth.token.email.lower().matches('.+@iitdh\\.ac\\.in$') &&
              request.auth.token.email_verified == true;
     }
 
-    function isAdmin() {
-      return isSignedIn() && (
-        request.auth.token.email.lower() == 'cs24mt002@iitdh.ac.in' ||
-        exists(/databases/$(database)/documents/admins/$(request.auth.uid))
-      );
-    }
-    
-    // ---------------------------------------------------------
-    // 2. VALIDATION BLUEPRINTS (Anti-Update-Gaps)
-    // ---------------------------------------------------------
-    function isValidUser(data) {
-      return data.keys().hasAll(['uid', 'name', 'email', 'phone', 'createdAt', 'listingsCountToday', 'wishlist']) &&
-        data.keys().size() == 7 &&
-        data.uid is string && data.uid == request.auth.uid &&
-        data.name is string && data.name.size() > 0 && data.name.size() <= 150 &&
-        data.email is string && data.email == request.auth.token.email &&
-        data.phone is string && data.phone.size() >= 10 && data.phone.size() <= 15 &&
-        data.createdAt is number &&
-        data.listingsCountToday is number &&
-        data.wishlist is list && data.wishlist.size() <= 100 &&
-        (data.wishlist.size() == 0 || (data.wishlist[0] is string && data.wishlist[0].size() <= 128));
+    function isValidId(id) { 
+      return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$'); 
     }
 
-    function isValidProduct(data) {
-      return data.keys().hasAll(['id', 'title', 'description', 'price', 'isPriceNegotiable', 'images', 'sellerId', 'sellerName', 'sellerEmail', 'sellerPhone', 'createdAt', 'expiresAt', 'status', 'contactClicks', 'views', 'updatedAt']) &&
-        data.keys().size() >= 16 && data.keys().size() <= 18 &&
-        data.id is string && data.id.size() <= 128 &&
-        data.title is string && data.title.size() > 0 && data.title.size() <= 100 &&
-        data.description is string && data.description.size() <= 1000 &&
-        data.price is number && data.price >= 0 &&
-        data.isPriceNegotiable is bool &&
-        data.images is list && data.images.size() <= 5 &&
-        (data.images.size() == 0 || (data.images[0] is string && data.images[0].size() <= 500)) &&
-        data.sellerId is string && data.sellerId == request.auth.uid &&
-        data.sellerName is string && data.sellerName.size() <= 150 &&
-        data.sellerEmail is string && data.sellerEmail == request.auth.token.email &&
-        data.sellerPhone is string && data.sellerPhone.size() <= 15 &&
-        data.createdAt is number &&
-        data.expiresAt is number &&
-        data.status is string && (data.status == 'active' || data.status == 'sold' || data.status == 'expired') &&
-        data.contactClicks is number &&
-        data.views is number &&
-        data.updatedAt is number;
-    }
+    function incoming() { return request.resource.data; }
+    function existing() { return resource.data; }
 
-    function isValidQuery(data) {
-      return data.keys().hasAll(['id', 'userId', 'userName', 'userEmail', 'subject', 'message', 'createdAt', 'status']) &&
-        data.keys().size() == 8 &&
-        data.id is string && data.id.size() <= 128 &&
-        data.userId is string && data.userId == request.auth.uid &&
-        data.userName is string && data.userName.size() <= 150 &&
-        data.userEmail is string && data.userEmail == request.auth.token.email &&
-        data.subject is string && data.subject.size() > 0 && data.subject.size() <= 200 &&
-        data.message is string && data.message.size() > 0 && data.message.size() <= 2000 &&
-        data.createdAt is number &&
-        data.status is string && (data.status == 'new' || data.status == 'resolved');
-    }
-
-    // ---------------------------------------------------------
-    // 3. SECURE COLLECTIONS
-    // ---------------------------------------------------------
+    // Support Queries
     match /queries/{queryId} {
-      allow get, list: if isAdmin();
-      
-      allow create: if isIITStudent() && 
-                    isValidId(queryId) && 
-                    isValidQuery(incoming()) &&
-                    exists(/databases/$(database)/documents/users/$(request.auth.uid));
-                    
+      allow list, get: if isAdmin();
+      allow create: if isIITStudent() && isValidId(queryId) &&
+                   incoming().message is string && incoming().message.size() <= 2000;
       allow update, delete: if isAdmin();
     }
 
+    // User Profiles
     match /users/{userId} {
-      // Anyone logged in with IIT email can read basic info, Admins can read all
-      allow get, list: if isIITStudent() || isAdmin();
-      
-      allow create: if isIITStudent() && 
-                    isValidId(userId) && 
-                    userId == request.auth.uid && 
-                    isValidUser(incoming());
-                    
-      // Allow user to update only their phone profile info OR listings limit OR wishlist
-      allow update: if isIITStudent() && 
-                    userId == request.auth.uid && 
-                    isValidUser(incoming()) &&
-                    (
-                      // Updating phone setting
-                      (
-                        incoming().diff(existing()).affectedKeys().hasOnly(['phone'])
-                      )
-                      ||
-                      // Updating wishlist
-                      (
-                        incoming().diff(existing()).affectedKeys().hasOnly(['wishlist'])
-                      )
-                      ||
-                      // Incrementing their listings tracker
-                      (
-                        incoming().diff(existing()).affectedKeys().hasOnly(['listingsCountToday'])
-                      )
-                    );
-    }
-
-    match /admins/{adminId} {
-      allow get: if isSignedIn();
       allow list: if isAdmin();
+      allow get: if isSignedIn();
+      allow create: if isIITStudent() && userId == request.auth.uid && isValidId(userId);
+      allow update: if isAdmin() || (
+        isIITStudent() && 
+        userId == request.auth.uid && 
+        incoming().phone is string && incoming().phone.size() <= 20
+      );
+      allow delete: if isAdmin();
     }
 
+    // Marketplace Listings
     match /products/{productId} {
-      // Product listings are public - no-one needs to login to view
-      allow get, list: if true;
-      
-      // Strict creation bound to the authorized user
-      allow create: if isIITStudent() && 
-                    isValidId(productId) &&
-                    isValidProduct(incoming()) &&
-                    // Enforce orphaned-write protection (user must exist)
-                    exists(/databases/$(database)/documents/users/$(request.auth.uid));
+      allow read, list: if true;
+      allow create: if isIITStudent() && isValidId(productId) &&
+                   incoming().title is string && incoming().title.size() <= 100;
+      allow update: if isAdmin() || (
+        isIITStudent() && 
+        existing().sellerId == request.auth.uid &&
+        incoming().sellerId == existing().sellerId &&
+        incoming().title is string && incoming().title.size() <= 100
+      ) || (
+        isSignedIn() && 
+        incoming().diff(existing()).affectedKeys().hasOnly(['views', 'contactClicks'])
+      );
+      allow delete: if isAdmin() || (isIITStudent() && resource.data.sellerId == request.auth.uid);
+    }
 
-      allow update: if isIITStudent() && isValidProduct(incoming()) && (
-                      // Action: ADMIN FULL OVERRIDE (Admin can edit any active listing details)
-                      isAdmin()
-                      ||
-                      // Action: Increment Views (Anyone logged in can increment by 1 safely)
-                      (
-                        incoming().diff(existing()).affectedKeys().hasOnly(['views'])
-                      )
-                      ||
-                      // Action: Increment Contact Clicks (Anyone logged in can increment)
-                      (
-                        incoming().diff(existing()).affectedKeys().hasOnly(['contactClicks'])
-                      )
-                      ||
-                      // Action: Owner marks item as Sold/Expired
-                      (
-                        existing().sellerId == request.auth.uid &&
-                        incoming().diff(existing()).affectedKeys().hasOnly(['status']) &&
-                        (incoming().status == 'sold' || incoming().status == 'expired' || incoming().status == 'active')
-                      )
-                      ||
-                      // Action: Owner Extends duration
-                      (
-                        existing().sellerId == request.auth.uid &&
-                        incoming().diff(existing()).affectedKeys().hasOnly(['expiresAt', 'status'])
-                      )
-                      // Normal listing update by owner
-                      ||
-                      (
-                        existing().sellerId == request.auth.uid &&
-                        incoming().diff(existing()).affectedKeys().hasOnly(['title', 'description', 'price', 'isPriceNegotiable', 'images'])
-                      )
-                    );
-
-      allow delete: if isIITStudent() && (existing().sellerId == request.auth.uid || isAdmin());
+    // Admin List
+    match /admins/{adminId} {
+      allow read: if isSignedIn();
+      allow write: if isAdmin();
     }
   }
 }

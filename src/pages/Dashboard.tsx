@@ -5,6 +5,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { IndianRupee, Trash2, Tag, Clock, User as UserIcon, Heart, Phone, Edit2, Save, X as CloseIcon } from 'lucide-react';
 import { formatDistanceToNow, format } from 'date-fns';
 import { Link, useNavigate } from 'react-router-dom';
+import { isValidPhoneNumber } from '../lib/utils';
 import toast from 'react-hot-toast';
 
 export default function Dashboard() {
@@ -102,8 +103,8 @@ export default function Dashboard() {
 
   const handleUpdateProfile = async () => {
     if (!user) return;
-    if (!tempPhone.trim()) {
-      toast.error('Phone number cannot be empty');
+    if (!isValidPhoneNumber(tempPhone)) {
+      toast.error('Please enter a valid 10-digit Indian phone number');
       return;
     }
     try {

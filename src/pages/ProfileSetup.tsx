@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { doc, setDoc } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 import { useAuth } from '../contexts/AuthContext';
+import { isValidPhoneNumber } from '../lib/utils';
 import toast from 'react-hot-toast';
 
 export default function ProfileSetup() {
@@ -14,15 +15,15 @@ export default function ProfileSetup() {
   // If not logged in, or if already has a profile, redirect away.
   React.useEffect(() => {
     if (!user) navigate('/');
-    if (profile) navigate('/dashboard');
+    if (profile) navigate('/');
   }, [user, profile, navigate]);
 
   if (!user) return null;
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (phone.length < 10) {
-      toast.error('Please enter a valid phone number');
+    if (!isValidPhoneNumber(phone)) {
+      toast.error('Please enter a valid 10-digit Indian phone number');
       return;
     }
 
@@ -41,7 +42,7 @@ export default function ProfileSetup() {
       
       toast.success('Profile created successfully!');
       await refreshProfile();
-      navigate('/dashboard');
+      navigate('/');
     } catch (error: any) {
       toast.error('Error creating profile: ' + error.message);
       console.error(error);

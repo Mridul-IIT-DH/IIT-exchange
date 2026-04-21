@@ -28,6 +28,7 @@
       "properties": {
         "title": { "type": "string" },
         "description": { "type": "string" },
+        "productAge": { "type": "string", "description": "e.g. 6 Months, 2 Years" },
         "price": { "type": "number" },
         "isPriceNegotiable": { "type": "boolean" },
         "images": { "type": "array" },

@@ -11,8 +11,13 @@ import About from './pages/About';
 import Terms from './pages/Terms';
 import Contact from './pages/Contact';
 import Admin from './pages/Admin';
+import { testFirestoreConnection } from './lib/firebase';
 
 export default function App() {
+  React.useEffect(() => {
+    testFirestoreConnection();
+  }, []);
+
   return (
     <AuthProvider>
       <Router>

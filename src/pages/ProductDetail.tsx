@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import { doc, getDoc, updateDoc, deleteDoc, increment, arrayUnion, arrayRemove } from 'firebase/firestore';
-import { db } from '../lib/firebase';
+import { db, handleFirestoreError } from '../lib/firebase';
 import { useAuth } from '../contexts/AuthContext';
 import { IndianRupee, ShieldAlert, Phone, Mail, ChevronLeft, ChevronRight, Eye, MousePointerClick, ShieldCheck, Heart, Tag } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
@@ -42,8 +42,7 @@ export default function ProductDetail() {
       }
       await refreshProfile();
     } catch (error) {
-      console.error(error);
-      toast.error('Failed to update wishlist');
+      handleFirestoreError(error, 'update', `users/${user.uid}`);
     } finally {
       setWishlistLoading(false);
     }
@@ -69,8 +68,7 @@ export default function ProductDetail() {
           }
         }
       } catch (error) {
-        console.error("Error fetching product:", error);
-        toast.error("Could not load product details.");
+        handleFirestoreError(error, 'get', `products/${id}`);
       } finally {
         setLoading(false);
       }
@@ -92,8 +90,7 @@ export default function ProductDetail() {
       setContactRevealed(true);
       toast.success('Contact info revealed.');
     } catch (error) {
-      console.error(error);
-      toast.error('Failed to reveal contact.');
+      handleFirestoreError(error, 'update', `products/${id}`);
     } finally {
       setRevealing(false);
     }
@@ -225,6 +222,16 @@ export default function ProductDetail() {
                   <Heart size={18} fill={isInWishlist ? "currentColor" : "none"} />
                   {isInWishlist ? 'In Wishlist' : 'Add to Wishlist'}
                 </button>
+            </div>
+
+            {/* Product Meta Info */}
+            <div className="mt-6 flex flex-wrap gap-4">
+              {product.productAge && (
+                <div className="bg-gray-50 px-4 py-2 rounded-xl border border-gray-100">
+                  <p className="text-[10px] font-black uppercase tracking-widest text-gray-400">Item Age</p>
+                  <p className="text-sm font-bold text-gray-900">{product.productAge}</p>
+                </div>
+              )}
             </div>
 
             <div className="mt-6 flex items-end gap-3">

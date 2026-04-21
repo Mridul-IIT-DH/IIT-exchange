@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
-import { collection, query, orderBy, getDocs, doc, deleteDoc, updateDoc, getCountFromServer, where } from 'firebase/firestore';
-import { db } from '../lib/firebase';
+import { collection, query, orderBy, getDocs, doc, deleteDoc, updateDoc, getCountFromServer, where, getDocsFromServer } from 'firebase/firestore';
+import { db, handleFirestoreError } from '../lib/firebase';
 import { useAuth } from '../contexts/AuthContext';
 import { useNavigate } from 'react-router-dom';
 import { 
@@ -63,27 +63,29 @@ export default function Admin() {
 
   const fetchData = async () => {
     setLoading(true);
+    const idToken = await user?.getIdToken();
+
     try {
+      // 1. Fetch Stats (Safe count queries)
       const productsRef = collection(db, 'products');
       const usersRef = collection(db, 'users');
       const queriesRef = collection(db, 'queries');
 
-      // Fetch Stats individually to prevent one failure from blocking all data
-      const getCount = async (q: any) => {
+      const getCount = async (q: any, label: string) => {
         try {
           const snap = await getCountFromServer(q);
           return snap.data().count;
         } catch (e) {
-          console.warn("Count failed for query:", e);
+          console.warn(`Admin [Stats]: Count failed for ${label}`, e);
           return 0;
         }
       };
 
       const [totalCount, activeCount, uCount, qCount] = await Promise.all([
-        getCount(productsRef),
-        getCount(query(productsRef, where('status', '==', 'active'))),
-        getCount(usersRef),
-        getCount(queriesRef) // Just total queries for the stat circle
+        getCount(productsRef, 'totalProducts'),
+        getCount(query(productsRef, where('status', '==', 'active')), 'activeProducts'),
+        getCount(usersRef, 'totalUsers'),
+        getCount(queriesRef, 'totalQueries')
       ]);
 
       setStats({
@@ -93,28 +95,45 @@ export default function Admin() {
         openQueries: qCount
       });
 
-      // Fetch Tab Specific Data
-      try {
-        if (activeTab === 'listings') {
-          const q = query(productsRef, orderBy('createdAt', 'desc'));
-          const snap = await getDocs(q);
+      // 2. Tab Specific Detailed Fetch with distinct handlers
+      console.log(`Admin [Data]: Attempting fetch for tab "${activeTab}"`);
+      
+      if (activeTab === 'listings') {
+        try {
+          const q = query(productsRef);
+          const snap = await getDocsFromServer(q);
           setListings(snap.docs.map(d => ({ id: d.id, ...d.data() })));
-        } else if (activeTab === 'users') {
-          const q = query(usersRef, orderBy('createdAt', 'desc'));
-          const snap = await getDocs(q);
-          setSiteUsers(snap.docs.map(d => ({ id: d.id, ...d.data() })));
-        } else if (activeTab === 'queries') {
-          const q = query(queriesRef, orderBy('createdAt', 'desc'));
-          const snap = await getDocs(q);
-          setQueries(snap.docs.map(d => ({ id: d.id, ...d.data() })));
+          console.log(`Admin [Data]: Successfully loaded ${snap.docs.length} listings`);
+        } catch (err) {
+          handleFirestoreError(err, 'list', 'products');
         }
-      } catch (tabError: any) {
-        console.error(`Tab fetch error (${activeTab}):`, tabError);
-        toast.error(`Failed to load ${activeTab} details: ${tabError.message || 'Permission denied'}`);
+      } 
+      
+      else if (activeTab === 'users') {
+        try {
+          const q = query(usersRef);
+          const snap = await getDocsFromServer(q);
+          setSiteUsers(snap.docs.map(d => ({ id: d.id, ...d.data() })));
+          console.log(`Admin [Data]: Successfully loaded ${snap.docs.length} users`);
+        } catch (err) {
+          handleFirestoreError(err, 'list', 'users');
+        }
+      } 
+      
+      else if (activeTab === 'queries') {
+        try {
+          const q = query(queriesRef);
+          const snap = await getDocsFromServer(q);
+          setQueries(snap.docs.map(d => ({ id: d.id, ...d.data() })));
+          console.log(`Admin [Data]: Successfully loaded ${snap.docs.length} queries`);
+        } catch (err) {
+          handleFirestoreError(err, 'list', 'queries');
+        }
       }
-    } catch (error: any) {
-      console.error("Critical Admin fetch error:", error);
-      toast.error("An unexpected error occurred while loading admin data");
+
+    } catch (criticalError: any) {
+      console.error("Admin [Critical]: Unhandled fetch failure", criticalError);
+      toast.error("Internal Admin Error: Check developer console");
     } finally {
       setLoading(false);
     }
@@ -197,7 +216,21 @@ export default function Admin() {
 
   const filteredListings = listings.filter(l => 
     l.title?.toLowerCase().includes(searchQuery.toLowerCase()) || 
-    l.sellerEmail?.toLowerCase().includes(searchQuery.toLowerCase())
+    l.sellerEmail?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    l.sellerName?.toLowerCase().includes(searchQuery.toLowerCase())
+  );
+
+  const filteredUsers = siteUsers.filter(u =>
+    u.name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    u.email?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    u.phone?.includes(searchQuery)
+  );
+
+  const filteredQueries = queries.filter(q =>
+    q.subject?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    q.message?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    q.userName?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    q.userEmail?.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
   return (
@@ -372,7 +405,7 @@ export default function Admin() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-50">
-                {siteUsers.map(u => (
+                {filteredUsers.map(u => (
                   <tr key={u.id} className="hover:bg-gray-50/50 transition">
                     <td className="px-6 py-4 shadow-none">
                       <div className="flex items-center gap-3">
@@ -398,7 +431,7 @@ export default function Admin() {
             </table>
           ) : (
             <div className="p-6 space-y-4">
-              {queries.map(q => (
+              {filteredQueries.map(q => (
                 <div key={q.id} className="p-6 rounded-2xl border border-gray-100 bg-gray-50/50 flex flex-col md:flex-row gap-6 justify-between items-start">
                   <div className="flex-1 space-y-2">
                     <div className="flex items-center gap-2 mb-1">

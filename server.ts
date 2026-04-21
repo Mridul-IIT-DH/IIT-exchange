@@ -7,7 +7,6 @@ import path from "path";
 import { fileURLToPath } from "url";
 import dotenv from "dotenv";
 import admin from "firebase-admin";
-import rateLimit from "express-rate-limit";
 
 // Load environment variables for development
 dotenv.config();
@@ -26,27 +25,10 @@ try {
     admin.initializeApp({
       projectId: "iit-exchange-368e9"
     });
-    console.log("Firebase Admin initialized successfully.");
   }
 } catch (error: any) {
   console.error("Firebase admin initialization error:", error);
 }
-
-// Enterprise Protection: Global Rate Limiter
-const apiLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 100, // limit each IP to 100 requests per windowMs
-  standardHeaders: true,
-  legacyHeaders: false,
-  message: { error: "Too many requests. Please try again later." }
-});
-
-// Stricter limiter for image uploads
-const uploadLimiter = rateLimit({
-  windowMs: 60 * 60 * 1000, // 1 hour
-  max: 30, // limit each IP to 30 uploads per hour
-  message: { error: "Hourly upload limit reached." }
-});
 
 async function requireAuth(req: express.Request, res: express.Response, next: express.NextFunction) {
   const authHeader = req.headers.authorization;
@@ -70,7 +52,6 @@ async function requireAuth(req: express.Request, res: express.Response, next: ex
     (req as any).user = decodedToken;
     next();
   } catch (error: any) {
-    console.error("Token verification failed details:", error.message);
     return res.status(401).json({ error: "Unauthorized: Invalid token" });
   }
 }
@@ -89,7 +70,7 @@ async function startServer() {
   });
 
   // API Route to upload image to Cloudinary (secure signed upload via server)
-  app.post("/api/images/upload", apiLimiter, uploadLimiter, requireAuth, upload.single("file"), async (req, res) => {
+  app.post("/api/images/upload", requireAuth, upload.single("file"), async (req, res) => {
     try {
       if (!req.file) {
         return res.status(400).json({ error: "No image file provided" });
@@ -124,7 +105,7 @@ async function startServer() {
   });
 
   // API Route to delete image from Cloudinary
-  app.post("/api/images/delete", apiLimiter, requireAuth, async (req, res) => {
+  app.post("/api/images/delete", requireAuth, async (req, res) => {
     try {
       const { imageUrl } = req.body;
       const user = (req as any).user;
@@ -133,11 +114,8 @@ async function startServer() {
         return res.status(400).json({ error: "Missing imageUrl" });
       }
 
-      // Enterprise Hardening: Verify ownership or admin status before deleting from Cloudinary
-      // We check if any product exists where sellerId is this user AND images contains this URL,
-      // OR if the user is a hardcoded admin.
+      // Hardened Ownership Check: Ensure only the seller or admin can delete
       const isAdmin = user.email === 'cs24mt002@iitdh.ac.in';
-      
       if (!isAdmin) {
         const db = admin.firestore();
         const productSnapshot = await db.collection('products')
@@ -147,11 +125,10 @@ async function startServer() {
           .get();
 
         if (productSnapshot.empty) {
-          // Check if user is in admins collection too
+          // Double check admins collection
           const adminDoc = await db.collection('admins').doc(user.uid).get();
           if (!adminDoc.exists) {
-            console.warn(`Unauthorized image delete attempt by ${user.email} for URL: ${imageUrl}`);
-            return res.status(403).json({ error: "Forbidden: You do not have permission to delete this image" });
+             return res.status(403).json({ error: "Forbidden: You do not own this image" });
           }
         }
       }
