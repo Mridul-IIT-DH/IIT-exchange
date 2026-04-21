@@ -315,9 +315,10 @@ export default function Sell() {
 
         {/* Product Age */}
         <div>
-          <label className="block text-sm font-medium text-gray-700">Product Age <span className="font-normal text-gray-400 ml-1">(Optional)</span></label>
+          <label className="block text-sm font-medium text-gray-700">Product Age <span className="text-red-500">*</span></label>
           <input 
             type="text" 
+            required
             value={productAge}
             onChange={(e) => setProductAge(e.target.value)}
             placeholder="e.g. 6 Months, 2 Years old..."

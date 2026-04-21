@@ -99,13 +99,17 @@ async function startServer() {
 
       Readable.from(req.file.buffer).pipe(uploadStream);
     } catch (error: any) {
-      console.error("Upload error:", error);
-      res.status(500).json({ error: "Server upload error" });
+      console.error("ADMIN-API [Upload Error]:", error);
+      res.status(500).json({ 
+        error: "Server processing error during upload",
+        message: error.message 
+      });
     }
   });
 
   // API Route to delete image from Cloudinary
   app.post("/api/images/delete", requireAuth, async (req, res) => {
+    console.log("ADMIN-API [Delete Request]:", req.body.imageUrl);
     try {
       const { imageUrl } = req.body;
       const user = (req as any).user;
@@ -118,17 +122,17 @@ async function startServer() {
       const isAdmin = user.email === 'cs24mt002@iitdh.ac.in';
       if (!isAdmin) {
         const db = admin.firestore();
-        const productSnapshot = await db.collection('products')
-          .where('images', 'array-contains', imageUrl)
-          .where('sellerId', '==', user.uid)
-          .limit(1)
-          .get();
+        // Check admins collection as fallback
+        const adminDoc = await db.collection('admins').doc(user.uid).get();
+        if (!adminDoc.exists) {
+          const productSnapshot = await db.collection('products')
+            .where('images', 'array-contains', imageUrl)
+            .where('sellerId', '==', user.uid)
+            .limit(1)
+            .get();
 
-        if (productSnapshot.empty) {
-          // Double check admins collection
-          const adminDoc = await db.collection('admins').doc(user.uid).get();
-          if (!adminDoc.exists) {
-             return res.status(403).json({ error: "Forbidden: You do not own this image" });
+          if (productSnapshot.empty) {
+            return res.status(403).json({ error: "Forbidden: You do not own this image" });
           }
         }
       }
@@ -159,9 +163,30 @@ async function startServer() {
       await cloudinary.uploader.destroy(fullPublicId);
       res.json({ success: true, publicId: fullPublicId });
     } catch (error: any) {
-      console.error("Cloudinary delete error:", error);
-      res.status(500).json({ error: "Failed to delete image" });
+      console.error("ADMIN-API [Delete Error]:", error);
+      res.status(500).json({ 
+        error: "Failed to delete resource",
+        message: error.message
+      });
     }
+  });
+
+  // --- API GUARDIAN ---
+  // Ensure any unmatched /api calls or internal errors don't drift into Vite fallback
+  app.use('/api', (req, res) => {
+    res.status(404).json({ error: `API route ${req.method} ${req.originalUrl} not found` });
+  });
+
+  // Global Error Handler for /api
+  app.use((err: any, req: express.Request, res: express.Response, next: express.NextFunction) => {
+    if (req.path.startsWith('/api')) {
+      console.error("CRITICAL [API Error]:", err);
+      return res.status(500).json({ 
+        error: "Internal Server Error in API",
+        message: err.message
+      });
+    }
+    next(err);
   });
 
   // Vite middleware for development

@@ -7,23 +7,19 @@ import {
   ShieldCheck, 
   Package, 
   Users, 
-  MessageSquare, 
   Trash2, 
   CheckCircle, 
-  XCircle,
   ExternalLink,
   Search,
-  Filter,
   RefreshCw,
   AlertTriangle,
   Edit3,
-  CheckCircle2,
   Tag
 } from 'lucide-react';
 import { format } from 'date-fns';
 import toast from 'react-hot-toast';
 
-type Tab = 'listings' | 'users' | 'queries';
+type Tab = 'listings' | 'users';
 
 export default function Admin() {
   const { user, isAdmin, loading: authLoading } = useAuth();
@@ -34,12 +30,10 @@ export default function Admin() {
   // Data States
   const [listings, setListings] = useState<any[]>([]);
   const [siteUsers, setSiteUsers] = useState<any[]>([]);
-  const [queries, setQueries] = useState<any[]>([]);
   const [stats, setStats] = useState({
     totalProducts: 0,
     activeProducts: 0,
-    totalUsers: 0,
-    openQueries: 0
+    totalUsers: 0
   });
 
   const [searchQuery, setSearchQuery] = useState('');
@@ -63,13 +57,11 @@ export default function Admin() {
 
   const fetchData = async () => {
     setLoading(true);
-    const idToken = await user?.getIdToken();
 
     try {
       // 1. Fetch Stats (Safe count queries)
       const productsRef = collection(db, 'products');
       const usersRef = collection(db, 'users');
-      const queriesRef = collection(db, 'queries');
 
       const getCount = async (q: any, label: string) => {
         try {
@@ -81,18 +73,16 @@ export default function Admin() {
         }
       };
 
-      const [totalCount, activeCount, uCount, qCount] = await Promise.all([
+      const [totalCount, activeCount, uCount] = await Promise.all([
         getCount(productsRef, 'totalProducts'),
         getCount(query(productsRef, where('status', '==', 'active')), 'activeProducts'),
-        getCount(usersRef, 'totalUsers'),
-        getCount(queriesRef, 'totalQueries')
+        getCount(usersRef, 'totalUsers')
       ]);
 
       setStats({
         totalProducts: totalCount,
         activeProducts: activeCount,
-        totalUsers: uCount,
-        openQueries: qCount
+        totalUsers: uCount
       });
 
       // 2. Tab Specific Detailed Fetch with distinct handlers
@@ -101,7 +91,7 @@ export default function Admin() {
       if (activeTab === 'listings') {
         try {
           const q = query(productsRef);
-          const snap = await getDocsFromServer(q);
+          const snap = await getDocs(q);
           setListings(snap.docs.map(d => ({ id: d.id, ...d.data() })));
           console.log(`Admin [Data]: Successfully loaded ${snap.docs.length} listings`);
         } catch (err) {
@@ -112,22 +102,11 @@ export default function Admin() {
       else if (activeTab === 'users') {
         try {
           const q = query(usersRef);
-          const snap = await getDocsFromServer(q);
+          const snap = await getDocs(q);
           setSiteUsers(snap.docs.map(d => ({ id: d.id, ...d.data() })));
           console.log(`Admin [Data]: Successfully loaded ${snap.docs.length} users`);
         } catch (err) {
           handleFirestoreError(err, 'list', 'users');
-        }
-      } 
-      
-      else if (activeTab === 'queries') {
-        try {
-          const q = query(queriesRef);
-          const snap = await getDocsFromServer(q);
-          setQueries(snap.docs.map(d => ({ id: d.id, ...d.data() })));
-          console.log(`Admin [Data]: Successfully loaded ${snap.docs.length} queries`);
-        } catch (err) {
-          handleFirestoreError(err, 'list', 'queries');
         }
       }
 
@@ -182,16 +161,6 @@ export default function Admin() {
     }
   };
 
-  const handleResolveQuery = async (id: string) => {
-    try {
-      await updateDoc(doc(db, 'queries', id), { status: 'resolved' });
-      toast.success("Query marked as resolved");
-      fetchData();
-    } catch (error: any) {
-      toast.error("Update failed: " + error.message);
-    }
-  };
-
   const handleMarkSold = async (id: string) => {
     try {
       await updateDoc(doc(db, 'products', id), { 
@@ -226,13 +195,6 @@ export default function Admin() {
     u.phone?.includes(searchQuery)
   );
 
-  const filteredQueries = queries.filter(q =>
-    q.subject?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    q.message?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    q.userName?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    q.userEmail?.toLowerCase().includes(searchQuery.toLowerCase())
-  );
-
   return (
     <div className="max-w-7xl mx-auto py-8 px-4 sm:px-6">
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-8">
@@ -254,12 +216,11 @@ export default function Admin() {
       </div>
 
       {/* Stats Grid */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-10">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 mb-10">
         {[
           { label: 'Total Listings', val: stats.totalProducts, icon: Package, color: 'text-blue-600', bg: 'bg-blue-50' },
           { label: 'Active Items', val: stats.activeProducts, icon: CheckCircle, color: 'text-green-600', bg: 'bg-green-50' },
-          { label: 'Total Users', val: stats.totalUsers, icon: Users, color: 'text-purple-600', bg: 'bg-purple-50' },
-          { label: 'Open Queries', val: stats.openQueries, icon: MessageSquare, color: 'text-orange-600', bg: 'bg-orange-50' },
+          { label: 'Total Users', val: stats.totalUsers, icon: Users, color: 'text-purple-600', bg: 'bg-purple-50' }
         ].map((stat, i) => (
           <div key={i} className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm flex items-center gap-4">
             <div className={`p-4 rounded-xl ${stat.bg} ${stat.color}`}>
@@ -275,7 +236,7 @@ export default function Admin() {
 
       {/* Tabs */}
       <div className="flex border-b border-gray-200 mb-8 gap-8 overflow-x-auto no-scrollbar">
-        {(['listings', 'users', 'queries'] as Tab[]).map(tab => (
+        {(['listings', 'users'] as Tab[]).map(tab => (
           <button
             key={tab}
             onClick={() => setActiveTab(tab)}
@@ -303,9 +264,6 @@ export default function Admin() {
               onChange={(e) => setSearchQuery(e.target.value)}
               className="w-full pl-10 pr-4 py-2 bg-gray-50 border-none rounded-xl text-sm focus:ring-2 focus:ring-indigo-500 outline-none"
             />
-          </div>
-          <div className="flex items-center gap-2">
-            <button className="p-2 text-gray-400 hover:text-indigo-600 transition"><Filter size={20} /></button>
           </div>
         </div>
 
@@ -429,47 +387,7 @@ export default function Admin() {
                 ))}
               </tbody>
             </table>
-          ) : (
-            <div className="p-6 space-y-4">
-              {filteredQueries.map(q => (
-                <div key={q.id} className="p-6 rounded-2xl border border-gray-100 bg-gray-50/50 flex flex-col md:flex-row gap-6 justify-between items-start">
-                  <div className="flex-1 space-y-2">
-                    <div className="flex items-center gap-2 mb-1">
-                      <span className={`px-2 py-0.5 rounded text-[10px] font-black uppercase tracking-widest ${
-                        q.status === 'new' ? 'bg-orange-600 text-white' : 'bg-green-600 text-white'
-                      }`}>
-                        {q.status}
-                      </span>
-                      <span className="text-xs font-bold text-gray-400 uppercase tracking-tighter">Support Ticket #{q.id.slice(-6)}</span>
-                    </div>
-                    <h4 className="text-lg font-black text-gray-900 tracking-tight">{q.subject}</h4>
-                    <p className="text-sm text-gray-600 bg-white p-4 rounded-xl border border-gray-100 italic">"{q.message}"</p>
-                    <div className="flex gap-4 pt-2">
-                      <div className="text-xs">
-                        <p className="text-[10px] text-gray-400 font-bold uppercase mb-0.5">Sender</p>
-                        <p className="font-bold text-gray-900">{q.userName} ({q.userEmail})</p>
-                      </div>
-                      <div className="text-xs">
-                        <p className="text-[10px] text-gray-400 font-bold uppercase mb-0.5">Time</p>
-                        <p className="font-bold text-gray-900">{formatSafeDate(q.createdAt, 'MMM d, h:mm a')}</p>
-                      </div>
-                    </div>
-                  </div>
-                  {q.status === 'new' && (
-                    <button 
-                      onClick={() => handleResolveQuery(q.id)}
-                      className="px-6 py-2 bg-indigo-600 text-white rounded-xl font-black text-sm hover:bg-indigo-700 shadow-md shadow-indigo-100 flex items-center gap-2"
-                    >
-                      <CheckCircle size={18} /> Resolve
-                    </button>
-                  )}
-                </div>
-              ))}
-              {queries.length === 0 && (
-                <div className="text-center py-20 text-gray-400 italic">No support queries found</div>
-              )}
-            </div>
-          )}
+          ) : null}
         </div>
       </div>
 

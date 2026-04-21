@@ -57,7 +57,7 @@ export default function Layout() {
             <div className="hidden md:flex md:items-center md:space-x-4">
               {user && profile ? (
                 <>
-                  {user.email === 'cs24mt002@iitdh.ac.in' && (
+                  {isAdmin && (
                     <Link
                       to="/admin"
                       className={cn(
@@ -127,7 +127,7 @@ export default function Layout() {
             <div className="pt-2 pb-3 space-y-1 px-4">
               {user && profile ? (
                 <>
-                  {user.email === 'cs24mt002@iitdh.ac.in' && (
+                  {isAdmin && (
                     <Link
                       to="/admin"
                       onClick={() => setMobileMenuOpen(false)}
