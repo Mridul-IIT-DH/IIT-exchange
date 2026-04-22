@@ -181,9 +181,76 @@ export default function Layout() {
       </nav>
 
       {/* Main Content */}
-      <main className="flex-1 max-w-7xl w-full mx-auto p-4 sm:p-6 lg:p-8">
+      <main className={cn(
+        "flex-1 max-w-7xl w-full mx-auto p-4 sm:p-6 lg:p-8",
+        "pb-24 md:pb-8" // Add extra bottom padding for mobile to account for bottom nav
+      )}>
         <Outlet />
       </main>
+
+      {/* Mobile Bottom Navigation (Floating) */}
+      <div className="md:hidden fixed bottom-6 left-4 right-4 z-40">
+        <div className="bg-white/80 backdrop-blur-lg border border-white/50 rounded-2xl shadow-[0_8px_30px_rgb(0,0,0,0.12)] p-2 flex justify-around items-center">
+          <Link 
+            to="/" 
+            className={cn(
+              "p-3 rounded-xl transition-all duration-200",
+              location.pathname === '/' ? "bg-indigo-600 text-white shadow-md scale-110" : "text-gray-500 hover:bg-gray-100"
+            )}
+          >
+            <div className="flex flex-col items-center">
+              <Code size={20} />
+            </div>
+          </Link>
+          
+          <Link 
+            to="/sell" 
+            className={cn(
+              "p-3 rounded-xl transition-all duration-200",
+              location.pathname === '/sell' ? "bg-indigo-600 text-white shadow-md scale-110" : "text-gray-500 hover:bg-gray-100"
+            )}
+          >
+            <div className="flex flex-col items-center">
+              <PackagePlus size={20} />
+            </div>
+          </Link>
+
+          <Link 
+            to="/dashboard" 
+            className={cn(
+              "p-3 rounded-xl transition-all duration-200",
+              location.pathname === '/dashboard' ? "bg-indigo-600 text-white shadow-md scale-110" : "text-gray-500 hover:bg-gray-100"
+            )}
+          >
+            <div className="flex flex-col items-center">
+              <LayoutDashboard size={20} />
+            </div>
+          </Link>
+
+          {isAdmin && (
+            <Link 
+              to="/admin" 
+              className={cn(
+                "p-3 rounded-xl transition-all duration-200",
+                location.pathname === '/admin' ? "bg-indigo-600 text-white shadow-md scale-110" : "text-gray-500 hover:bg-gray-100"
+              )}
+            >
+              <div className="flex flex-col items-center">
+                <ShieldCheck size={20} />
+              </div>
+            </Link>
+          )}
+
+          {!user && (
+            <button 
+              onClick={handleLogin}
+              className="p-3 text-gray-500 hover:bg-gray-100 rounded-xl transition-all duration-200"
+            >
+              <UserCircle size={20} />
+            </button>
+          )}
+        </div>
+      </div>
 
       {/* Footer */}
       <footer className="bg-white border-t border-gray-200 mt-auto">

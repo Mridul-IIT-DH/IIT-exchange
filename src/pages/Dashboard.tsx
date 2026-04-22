@@ -2,10 +2,10 @@ import React, { useEffect, useState } from 'react';
 import { collection, query, where, orderBy, getDocs, doc, updateDoc, deleteDoc, getDoc } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 import { useAuth } from '../contexts/AuthContext';
-import { IndianRupee, Trash2, Tag, Clock, User as UserIcon, Heart, Phone, Edit2, Save, X as CloseIcon } from 'lucide-react';
+import { IndianRupee, Trash2, Tag, Clock, User as UserIcon, Heart, Phone, Edit2, Save, X as CloseIcon, ShieldCheck, Mail, Package } from 'lucide-react';
 import { formatDistanceToNow, format } from 'date-fns';
 import { Link, useNavigate } from 'react-router-dom';
-import { isValidPhoneNumber } from '../lib/utils';
+import { cn, isValidPhoneNumber } from '../lib/utils';
 import toast from 'react-hot-toast';
 
 export default function Dashboard() {
@@ -368,82 +368,101 @@ export default function Dashboard() {
         )}
 
         {activeTab === 'profile' && (
-          <div className="max-w-xl mx-auto">
-            <div className="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden">
-              <div className="bg-gradient-to-r from-indigo-600 to-indigo-700 p-8 text-white text-center">
-                <div className="w-20 h-20 bg-white/20 backdrop-blur-sm rounded-full flex items-center justify-center mx-auto mb-4 border-2 border-white/30">
-                  <UserIcon size={40} />
-                </div>
-                <h3 className="text-xl font-bold">{profile?.name}</h3>
-                <p className="text-indigo-100 text-sm">{profile?.email}</p>
-                <div className="mt-4 inline-block bg-white/20 px-3 py-1 rounded-full text-xs font-bold uppercase tracking-widest border border-white/10">
-                  Member Since {profile ? format(profile.createdAt, 'MMM yyyy') : ''}
+          <div className="max-w-xl mx-auto animate-in fade-in slide-in-from-bottom-4 duration-500">
+            <div className="bg-white rounded-3xl border border-gray-200 shadow-sm overflow-hidden">
+              <div className="bg-gradient-to-br from-indigo-600 via-indigo-700 to-indigo-800 p-8 sm:p-12 text-white text-center relative overflow-hidden">
+                <div className="absolute top-0 right-0 w-32 h-32 bg-white/10 rounded-full -mr-16 -mt-16 blur-3xl"></div>
+                <div className="absolute bottom-0 left-0 w-24 h-24 bg-indigo-400/20 rounded-full -ml-12 -mb-12 blur-2xl"></div>
+                
+                <div className="relative">
+                  <div className="w-20 h-20 sm:w-24 sm:h-24 bg-white/10 backdrop-blur-md rounded-3xl flex items-center justify-center mx-auto mb-4 border-2 border-white/20 rotate-3 hover:rotate-0 transition-transform duration-300">
+                    <UserIcon size={48} className="sm:size-56" />
+                  </div>
+                  <h3 className="text-2xl font-black tracking-tight">{profile?.name}</h3>
+                  <p className="text-indigo-100 text-sm font-medium opacity-80">{profile?.email}</p>
+                  <div className="mt-4 inline-flex items-center gap-2 bg-white/10 backdrop-blur-md px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest border border-white/10">
+                    <ShieldCheck size={14} /> Member Since {profile ? format(profile.createdAt, 'yyyy') : ''}
+                  </div>
                 </div>
               </div>
 
-              <div className="p-8 space-y-8">
-                <div className="space-y-4">
-                  <div className="flex justify-between items-center">
-                    <h4 className="text-sm font-bold text-gray-500 uppercase tracking-widest">Contact Information</h4>
+              <div className="p-6 sm:p-10 space-y-10">
+                <div className="space-y-6">
+                  <div className="flex justify-between items-center px-2">
+                    <h4 className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Contact Details</h4>
                     {!isEditingProfile && (
                       <button 
                         onClick={() => setIsEditingProfile(true)}
-                        className="text-indigo-600 hover:text-indigo-700 text-xs font-bold flex items-center gap-1"
+                        className="text-indigo-600 hover:text-indigo-700 text-[10px] font-black flex items-center gap-1 uppercase tracking-widest"
                       >
-                        <Edit2 size={14} /> EDIT
+                        <Edit2 size={12} /> Update
                       </button>
                     )}
                   </div>
 
-                  <div className="flex items-center gap-4 bg-gray-50 p-4 rounded-xl border border-gray-100">
-                    <div className="p-2 bg-indigo-100 text-indigo-600 rounded-lg">
-                      <Phone size={20} />
+                  <div className="grid grid-cols-1 gap-4">
+                    <div className="flex items-center gap-4 bg-gray-50/50 p-4 rounded-2xl border border-gray-100 group hover:border-indigo-100 transition-colors">
+                      <div className="p-3 bg-white text-indigo-600 rounded-xl shadow-sm border border-gray-100 group-hover:scale-110 transition-transform">
+                        <Phone size={20} />
+                      </div>
+                      <div className="flex-1">
+                        <p className="text-[10px] text-gray-400 font-black uppercase tracking-widest mb-0.5">Mobile Number</p>
+                        {isEditingProfile ? (
+                          <div className="flex gap-2">
+                            <input 
+                              type="tel"
+                              value={tempPhone}
+                              onChange={(e) => setTempPhone(e.target.value)}
+                              className="block w-full px-3 py-1.5 bg-white border border-indigo-100 rounded-xl focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none transition text-sm font-bold"
+                              placeholder="10-digit number"
+                              autoFocus
+                            />
+                            <button 
+                              onClick={handleUpdateProfile}
+                              className="p-2 bg-indigo-600 text-white rounded-xl hover:bg-indigo-700 transition shadow-indigo-100 shadow-lg"
+                              title="Save"
+                            >
+                              <Save size={18} />
+                            </button>
+                            <button 
+                              onClick={() => {
+                                setIsEditingProfile(false);
+                                setTempPhone(profile?.phone || '');
+                              }}
+                              className="p-2 bg-gray-100 text-gray-600 rounded-xl hover:bg-gray-200 transition"
+                              title="Cancel"
+                            >
+                              <CloseIcon size={18} />
+                            </button>
+                          </div>
+                        ) : (
+                          <p className="text-gray-900 font-black tracking-tight">{profile?.phone}</p>
+                        )}
+                      </div>
                     </div>
-                    <div className="flex-1">
-                      <p className="text-xs text-gray-500 font-bold uppercase tracking-tighter">Phone Number</p>
-                      {isEditingProfile ? (
-                        <div className="mt-1 flex gap-2">
-                          <input 
-                            type="tel"
-                            value={tempPhone}
-                            onChange={(e) => setTempPhone(e.target.value)}
-                            className="block w-full px-3 py-1.5 border border-indigo-200 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition"
-                            placeholder="Enter your phone number"
-                            autoFocus
-                          />
-                          <button 
-                            onClick={handleUpdateProfile}
-                            className="p-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition"
-                            title="Save"
-                          >
-                            <Save size={18} />
-                          </button>
-                          <button 
-                            onClick={() => {
-                              setIsEditingProfile(false);
-                              setTempPhone(profile?.phone || '');
-                            }}
-                            className="p-2 bg-gray-200 text-gray-600 rounded-lg hover:bg-gray-300 transition"
-                            title="Cancel"
-                          >
-                            <CloseIcon size={18} />
-                          </button>
-                        </div>
-                      ) : (
-                        <p className="text-gray-900 font-bold">{profile?.phone}</p>
-                      )}
+
+                    <div className="flex items-center gap-4 bg-gray-50/50 p-4 rounded-2xl border border-gray-100 group hover:border-indigo-100 transition-colors">
+                       <div className="p-3 bg-white text-indigo-600 rounded-xl shadow-sm border border-gray-100">
+                        <Mail size={20} />
+                      </div>
+                      <div className="flex-1">
+                        <p className="text-[10px] text-gray-400 font-black uppercase tracking-widest mb-0.5">College Email</p>
+                        <p className="text-gray-900 font-black tracking-tight truncate">{profile?.email}</p>
+                      </div>
                     </div>
                   </div>
                 </div>
 
                 <div className="grid grid-cols-2 gap-4">
-                  <div className="bg-gray-50 p-4 rounded-xl border border-gray-100 text-center">
-                    <p className="text-[10px] text-gray-500 font-bold uppercase tracking-widest mb-1">Total Listings</p>
-                    <p className="text-2xl font-black text-gray-900">{products.length}</p>
+                  <div className="bg-indigo-600 p-6 rounded-3xl text-white shadow-xl shadow-indigo-100 relative overflow-hidden group">
+                    <Package className="absolute -right-4 -bottom-4 size-20 opacity-10 group-hover:scale-110 transition-transform duration-500" />
+                    <p className="text-[10px] font-black uppercase tracking-widest opacity-80 mb-2">My Listings</p>
+                    <p className="text-3xl font-black">{products.length}</p>
                   </div>
-                   <div className="bg-gray-50 p-4 rounded-xl border border-gray-100 text-center">
-                    <p className="text-[10px] text-gray-500 font-bold uppercase tracking-widest mb-1">Items Sold</p>
-                    <p className="text-2xl font-black text-green-600">{products.filter(p => p.status === 'sold').length}</p>
+                   <div className="bg-white border-2 border-green-500/20 p-6 rounded-3xl text-green-600 relative overflow-hidden group">
+                    <Tag className="absolute -right-4 -bottom-4 size-20 opacity-5 group-hover:scale-110 transition-transform duration-500" />
+                    <p className="text-[10px] font-black uppercase tracking-widest opacity-80 mb-2 text-green-500/80">Items Sold</p>
+                    <p className="text-3xl font-black text-green-600">{products.filter(p => p.status === 'sold').length}</p>
                   </div>
                 </div>
               </div>

@@ -78,15 +78,15 @@ export default function Home() {
   });
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-6 sm:space-y-8">
       {/* Hero Section */}
       <div className="relative bg-indigo-700 rounded-2xl overflow-hidden shadow-lg">
         <div className="absolute inset-0 opacity-20 bg-[url('https://picsum.photos/seed/college/1920/1080')] bg-cover bg-center"></div>
-        <div className="relative p-12 lg:px-20 lg:py-24 text-center sm:text-left">
-          <h1 className="text-4xl md:text-5xl font-extrabold text-white tracking-tight mb-4">
+        <div className="relative p-6 sm:p-12 lg:px-20 lg:py-24 text-center sm:text-left">
+          <h1 className="text-3xl md:text-5xl font-extrabold text-white tracking-tight mb-4">
             IIT Exchange Marketplace
           </h1>
-          <p className="text-xl text-indigo-100 max-w-2xl mb-8">
+          <p className="text-lg text-indigo-100 max-w-2xl mb-6 sm:mb-8">
             The exclusive platform for IIT Dharwad students to buy and sell used books, electronics, cycles, and more securely.
           </p>
           <div className="flex flex-wrap gap-4 justify-center sm:justify-start">
@@ -156,7 +156,7 @@ export default function Home() {
                 }
               }
             }}
-            className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6"
+            className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-6"
           >
             {filteredProducts.map((product) => (
               <motion.div
@@ -205,29 +205,29 @@ export default function Home() {
                       <Heart size={16} fill={profile?.wishlist?.includes(product.id) ? "currentColor" : "none"} />
                     </button>
                   </div>
-                  <div className="p-4 flex-1 flex flex-col">
-                    <h3 className="text-lg font-medium text-gray-900 line-clamp-1 group-hover:text-indigo-600 transition">
+                  <div className="p-3 sm:p-4 flex-1 flex flex-col">
+                    <h3 className="text-sm sm:text-lg font-bold text-gray-900 line-clamp-1 group-hover:text-indigo-600 transition">
                       {product.title}
                     </h3>
-                    <div className="mt-1 flex items-baseline gap-2">
+                    <div className="mt-1 flex flex-col sm:flex-row sm:items-baseline gap-1 sm:gap-2">
                       {product.isPriceNegotiable && product.price === 0 ? (
-                        <span className="text-lg font-bold text-gray-900">Discuss Price</span>
+                        <span className="text-sm sm:text-lg font-bold text-gray-900">Discuss Price</span>
                       ) : (
                         <>
-                          <span className="text-xl font-bold text-gray-900 flex items-center">
-                            <IndianRupee size={18} /> {product.price.toLocaleString()}
+                          <span className="text-base sm:text-xl font-black text-gray-900 flex items-center">
+                            <IndianRupee size={14} className="sm:size-[18px]" /> {product.price.toLocaleString()}
                           </span>
                           {product.isPriceNegotiable && (
-                             <span className="text-[10px] uppercase font-bold text-indigo-600 bg-indigo-50 border border-indigo-100 px-2 py-0.5 rounded-full">
+                             <span className="text-[8px] sm:text-[10px] uppercase font-black text-indigo-600 bg-indigo-50 border border-indigo-100 px-1.5 sm:px-2 py-0.5 rounded-full w-fit">
                                Negotiable
                              </span>
                           )}
                         </>
                       )}
                     </div>
-                    <div className="mt-auto pt-4 flex justify-between items-center text-xs text-gray-500">
-                      <span className="line-clamp-1">{product.sellerName}</span>
-                      <span>{formatDistanceToNow(product.createdAt, { addSuffix: true })}</span>
+                    <div className="mt-auto pt-3 sm:pt-4 flex justify-between items-center text-[10px] sm:text-xs text-gray-500 font-medium">
+                      <span className="line-clamp-1 max-w-[60%]">{product.sellerName}</span>
+                      <span className="shrink-0">{formatDistanceToNow(product.createdAt, { addSuffix: true }).replace('about ', '')}</span>
                     </div>
                   </div>
                 </Link>

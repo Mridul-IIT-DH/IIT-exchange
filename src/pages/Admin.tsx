@@ -267,126 +267,214 @@ export default function Admin() {
           </div>
         </div>
 
-        <div className="overflow-x-auto">
+        <div className="overflow-x-auto sm:overflow-visible">
           {loading ? (
             <div className="py-20 text-center"><RefreshCw className="animate-spin inline-block text-indigo-600" /></div>
           ) : activeTab === 'listings' ? (
-            <table className="w-full text-left">
-              <thead className="bg-gray-50 text-[10px] font-black uppercase tracking-widest text-gray-400 border-b border-gray-100">
-                <tr>
-                  <th className="px-6 py-4">Product</th>
-                  <th className="px-6 py-4">Seller</th>
-                  <th className="px-6 py-4">Price</th>
-                  <th className="px-6 py-4">Status</th>
-                  <th className="px-6 py-4">Date</th>
-                  <th className="px-6 py-4 text-right">Actions</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-gray-50">
-                {filteredListings.map(l => (
-                  <tr key={l.id} className="hover:bg-gray-50/50 transition">
-                    <td className="px-6 py-4">
-                      <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 rounded-lg overflow-hidden bg-gray-100 shrink-0">
-                          {l.images?.[0] && <img src={l.images[0]} className="w-full h-full object-cover" referrerPolicy="no-referrer" />}
+            <div className="min-w-full">
+              {/* Desktop Table */}
+              <table className="hidden sm:table w-full text-left">
+                <thead className="bg-gray-50 text-[10px] font-black uppercase tracking-widest text-gray-400 border-b border-gray-100">
+                  <tr>
+                    <th className="px-6 py-4">Product</th>
+                    <th className="px-6 py-4">Seller</th>
+                    <th className="px-6 py-4">Price</th>
+                    <th className="px-6 py-4">Status</th>
+                    <th className="px-6 py-4">Date</th>
+                    <th className="px-6 py-4 text-right">Actions</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-50">
+                  {filteredListings.map(l => (
+                    <tr key={l.id} className="hover:bg-gray-50/50 transition">
+                      <td className="px-6 py-4">
+                        <div className="flex items-center gap-3">
+                          <div className="w-10 h-10 rounded-lg overflow-hidden bg-gray-100 shrink-0">
+                            {l.images?.[0] && <img src={l.images[0]} className="w-full h-full object-cover" referrerPolicy="no-referrer" />}
+                          </div>
+                          <div className="max-w-[200px]">
+                            <p className="font-bold text-gray-900 truncate text-sm">{l.title}</p>
+                            <p className="text-[10px] text-gray-400 font-mono truncate uppercase">{l.id}</p>
+                          </div>
                         </div>
-                        <div className="max-w-[200px]">
-                          <p className="font-bold text-gray-900 truncate text-sm">{l.title}</p>
-                          <p className="text-[10px] text-gray-400 font-mono truncate uppercase">{l.id}</p>
+                      </td>
+                      <td className="px-6 py-4 text-sm font-medium">
+                        <p className="text-gray-900">{l.sellerName}</p>
+                        <p className="text-xs text-gray-400">{l.sellerEmail}</p>
+                      </td>
+                      <td className="px-6 py-4">
+                        <span className="text-sm font-black text-indigo-600">₹{l.price.toLocaleString()}</span>
+                      </td>
+                      <td className="px-6 py-4">
+                        <span className={`px-2 py-1 rounded-md text-[10px] font-black uppercase tracking-wider ${
+                          l.status === 'active' ? 'bg-green-100 text-green-700' : 
+                          l.status === 'sold' ? 'bg-blue-100 text-blue-700' : 'bg-gray-100 text-gray-700'
+                        }`}>
+                          {l.status}
+                        </span>
+                      </td>
+                      <td className="px-6 py-4 text-xs text-gray-400 font-medium">
+                        {formatSafeDate(l.createdAt, 'MMM d, h:mm a')}
+                      </td>
+                      <td className="px-6 py-4 text-right">
+                        <div className="flex justify-end gap-1">
+                          <button 
+                            onClick={() => navigate(`/product/${l.id}`)}
+                            className="p-1.5 text-gray-400 hover:text-indigo-600 transition"
+                            title="View Listing"
+                          >
+                            <ExternalLink size={16} />
+                          </button>
+                          <button 
+                            onClick={() => navigate(`/edit/${l.id}`)}
+                            className="p-1.5 text-gray-400 hover:text-indigo-600 transition"
+                            title="Edit Listing"
+                          >
+                            <Edit3 size={16} />
+                          </button>
+                          {l.status === 'active' && (
+                            <button 
+                              onClick={() => handleMarkSold(l.id)}
+                              className="p-1.5 text-gray-400 hover:text-green-600 transition"
+                              title="Mark as Sold"
+                            >
+                              <Tag size={16} />
+                            </button>
+                          )}
+                          <button 
+                            onClick={() => handleDeleteListing(l.id, l.images)}
+                            className="p-1.5 text-gray-400 hover:text-red-600 transition"
+                            title="Delete Listing"
+                          >
+                            <Trash2 size={16} />
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+
+              {/* Mobile View */}
+              <div className="sm:hidden divide-y divide-gray-100">
+                {filteredListings.map(l => (
+                  <div key={l.id} className="p-4 space-y-4">
+                    <div className="flex gap-4">
+                      <div className="w-16 h-16 rounded-xl overflow-hidden bg-gray-100 shrink-0">
+                        {l.images?.[0] && <img src={l.images[0]} className="w-full h-full object-cover" referrerPolicy="no-referrer" />}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex justify-between items-start gap-2">
+                          <h4 className="font-bold text-gray-900 text-sm truncate">{l.title}</h4>
+                          <span className="text-indigo-600 font-black text-sm shrink-0">₹{l.price.toLocaleString()}</span>
+                        </div>
+                        <p className="text-[10px] text-gray-400 font-mono truncate uppercase mt-1">ID: {l.id}</p>
+                        <div className="mt-2 flex items-center gap-2">
+                           <span className={`px-2 py-0.5 rounded-md text-[8px] font-black uppercase tracking-wider ${
+                            l.status === 'active' ? 'bg-green-100 text-green-700' : 
+                            l.status === 'sold' ? 'bg-blue-100 text-blue-700' : 'bg-gray-100 text-gray-700'
+                          }`}>
+                            {l.status}
+                          </span>
+                          <span className="text-[10px] text-gray-400">{formatSafeDate(l.createdAt, 'MMM d')}</span>
                         </div>
                       </div>
-                    </td>
-                    <td className="px-6 py-4 text-sm font-medium">
-                      <p className="text-gray-900">{l.sellerName}</p>
-                      <p className="text-xs text-gray-400">{l.sellerEmail}</p>
-                    </td>
-                    <td className="px-6 py-4">
-                      <span className="text-sm font-black text-indigo-600">₹{l.price.toLocaleString()}</span>
-                    </td>
-                    <td className="px-6 py-4">
-                      <span className={`px-2 py-1 rounded-md text-[10px] font-black uppercase tracking-wider ${
-                        l.status === 'active' ? 'bg-green-100 text-green-700' : 
-                        l.status === 'sold' ? 'bg-blue-100 text-blue-700' : 'bg-gray-100 text-gray-700'
-                      }`}>
-                        {l.status}
-                      </span>
-                    </td>
-                    <td className="px-6 py-4 text-xs text-gray-400 font-medium">
-                      {formatSafeDate(l.createdAt, 'MMM d, h:mm a')}
-                    </td>
-                    <td className="px-6 py-4 text-right">
-                      <div className="flex justify-end gap-1">
+                    </div>
+                    <div className="flex items-center justify-between pt-2">
+                      <div className="text-[10px]">
+                        <p className="text-gray-900 font-bold">{l.sellerName}</p>
+                        <p className="text-gray-400">{l.sellerEmail}</p>
+                      </div>
+                      <div className="flex gap-2">
                         <button 
                           onClick={() => navigate(`/product/${l.id}`)}
-                          className="p-1.5 text-gray-400 hover:text-indigo-600 transition"
-                          title="View Listing"
+                          className="p-2 bg-gray-50 text-gray-500 rounded-lg"
                         >
-                          <ExternalLink size={16} />
+                          <ExternalLink size={14} />
                         </button>
                         <button 
                           onClick={() => navigate(`/edit/${l.id}`)}
-                          className="p-1.5 text-gray-400 hover:text-indigo-600 transition"
-                          title="Edit Listing"
+                          className="p-2 bg-gray-50 text-gray-500 rounded-lg"
                         >
-                          <Edit3 size={16} />
+                          <Edit3 size={14} />
                         </button>
-                        {l.status === 'active' && (
-                          <button 
-                            onClick={() => handleMarkSold(l.id)}
-                            className="p-1.5 text-gray-400 hover:text-green-600 transition"
-                            title="Mark as Sold"
-                          >
-                            <Tag size={16} />
-                          </button>
-                        )}
                         <button 
                           onClick={() => handleDeleteListing(l.id, l.images)}
-                          className="p-1.5 text-gray-400 hover:text-red-600 transition"
-                          title="Delete Listing"
+                          className="p-2 bg-red-50 text-red-500 rounded-lg"
                         >
-                          <Trash2 size={16} />
+                          <Trash2 size={14} />
                         </button>
                       </div>
-                    </td>
-                  </tr>
+                    </div>
+                  </div>
                 ))}
-              </tbody>
-            </table>
+              </div>
+            </div>
           ) : activeTab === 'users' ? (
-            <table className="w-full text-left">
-              <thead className="bg-gray-50 text-[10px] font-black uppercase tracking-widest text-gray-400 border-b border-gray-100">
-                <tr>
-                  <th className="px-6 py-4">User</th>
-                  <th className="px-6 py-4">Contact</th>
-                  <th className="px-6 py-4">Joined</th>
-                  <th className="px-6 py-4">Listings</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-gray-50">
+            <div className="min-w-full">
+              {/* Desktop Table */}
+              <table className="hidden sm:table w-full text-left">
+                <thead className="bg-gray-50 text-[10px] font-black uppercase tracking-widest text-gray-400 border-b border-gray-100">
+                  <tr>
+                    <th className="px-6 py-4">User</th>
+                    <th className="px-6 py-4">Contact</th>
+                    <th className="px-6 py-4">Joined</th>
+                    <th className="px-6 py-4">Listings</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-50">
+                  {filteredUsers.map(u => (
+                    <tr key={u.id} className="hover:bg-gray-50/50 transition">
+                      <td className="px-6 py-4 shadow-none">
+                        <div className="flex items-center gap-3">
+                          <div className="w-8 h-8 rounded-full bg-indigo-100 text-indigo-600 flex items-center justify-center font-black text-xs">
+                            {u.name?.[0]}
+                          </div>
+                          <p className="font-bold text-gray-900 text-sm">{u.name}</p>
+                        </div>
+                      </td>
+                      <td className="px-6 py-4 text-sm font-medium">
+                        <p className="text-gray-900">{u.email}</p>
+                        <p className="text-xs text-gray-400">{u.phone}</p>
+                      </td>
+                      <td className="px-6 py-4 text-xs text-gray-400">
+                        {formatSafeDate(u.createdAt, 'MMM yyyy')}
+                      </td>
+                      <td className="px-6 py-4 text-sm font-black text-indigo-600">
+                        {u.listingsCountToday}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+
+              {/* Mobile View */}
+              <div className="sm:hidden divide-y divide-gray-100">
                 {filteredUsers.map(u => (
-                  <tr key={u.id} className="hover:bg-gray-50/50 transition">
-                    <td className="px-6 py-4 shadow-none">
-                      <div className="flex items-center gap-3">
-                        <div className="w-8 h-8 rounded-full bg-indigo-100 text-indigo-600 flex items-center justify-center font-black text-xs">
+                  <div key={u.id} className="p-4">
+                    <div className="flex items-center gap-3 mb-2">
+                       <div className="w-8 h-8 rounded-full bg-indigo-100 text-indigo-600 flex items-center justify-center font-black text-xs">
                           {u.name?.[0]}
                         </div>
-                        <p className="font-bold text-gray-900 text-sm">{u.name}</p>
+                        <div>
+                          <p className="font-bold text-gray-900 text-sm">{u.name}</p>
+                          <p className="text-[10px] text-gray-400 uppercase tracking-widest">Joined {formatSafeDate(u.createdAt, 'MMM yyyy')}</p>
+                        </div>
+                    </div>
+                    <div className="flex justify-between items-center text-xs">
+                      <div>
+                        <p className="text-gray-700">{u.email}</p>
+                        <p className="text-gray-500">{u.phone}</p>
                       </div>
-                    </td>
-                    <td className="px-6 py-4 text-sm font-medium">
-                      <p className="text-gray-900">{u.email}</p>
-                      <p className="text-xs text-gray-400">{u.phone}</p>
-                    </td>
-                    <td className="px-6 py-4 text-xs text-gray-400">
-                      {formatSafeDate(u.createdAt, 'MMM yyyy')}
-                    </td>
-                    <td className="px-6 py-4 text-sm font-black text-indigo-600">
-                      {u.listingsCountToday}
-                    </td>
-                  </tr>
+                      <div className="text-right">
+                        <p className="text-[10px] text-gray-400 font-black uppercase tracking-tighter">Daily Uploads</p>
+                        <p className="text-lg font-black text-indigo-600">{u.listingsCountToday}</p>
+                      </div>
+                    </div>
+                  </div>
                 ))}
-              </tbody>
-            </table>
+              </div>
+            </div>
           ) : null}
         </div>
       </div>
