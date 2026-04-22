@@ -1,13 +1,16 @@
 import React from 'react';
 import { Outlet, Link, useNavigate, useLocation } from 'react-router-dom';
-import { LayoutDashboard, LogOut, PackagePlus, UserCircle, Menu, X, Code, ShieldCheck } from 'lucide-react';
+import { LayoutDashboard, LogOut, PackagePlus, UserCircle, Menu, X, Code, ShieldCheck, LogIn, AlertCircle } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { cn } from '../lib/utils';
 import { Toaster } from 'react-hot-toast';
+import { AnimatePresence, motion } from 'motion/react';
 
 export default function Layout() {
   const { user, profile, isAdmin, signIn, logout, loading } = useAuth();
   const [mobileMenuOpen, setMobileMenuOpen] = React.useState(false);
+  const [showAuthModal, setShowAuthModal] = React.useState(false);
+  const [pendingPath, setPendingPath] = React.useState<string | null>(null);
   const navigate = useNavigate();
   const location = useLocation();
 
@@ -18,7 +21,31 @@ export default function Layout() {
 
   const handleLogin = async () => {
     await signIn();
-    navigate('/');
+    if (pendingPath) {
+      navigate(pendingPath);
+      setPendingPath(null);
+    }
+    setShowAuthModal(false);
+  };
+
+  const protectedNavigate = (path: string) => {
+    if (!user) {
+      setPendingPath(path);
+      setShowAuthModal(true);
+    } else {
+      navigate(path);
+    }
+  };
+
+  const handleHomeClick = (e: React.MouseEvent) => {
+    if (location.pathname === '/') {
+      e.preventDefault();
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+      // Minor hack to trigger refresh-like behavior without full reload if needed, 
+      // but usually scroll to top is what users expect.
+      // If user strictly wants refresh:
+      // window.location.reload(); 
+    }
   };
 
   // Redirect to setup if logged in but no profile exists (and not already on setup)
@@ -45,7 +72,7 @@ export default function Layout() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between h-16">
             <div className="flex items-center">
-              <Link to="/" className="flex items-center gap-2">
+              <Link to="/" onClick={handleHomeClick} className="flex items-center gap-2">
                 <div className="bg-indigo-600 text-white p-2 rounded-lg">
                   <Code size={24} />
                 </div>
@@ -183,74 +210,120 @@ export default function Layout() {
       {/* Main Content */}
       <main className={cn(
         "flex-1 max-w-7xl w-full mx-auto p-4 sm:p-6 lg:p-8",
-        "pb-24 md:pb-8" // Add extra bottom padding for mobile to account for bottom nav
+        "pb-28 md:pb-8" // Add extra bottom padding for mobile to account for bottom nav
       )}>
         <Outlet />
       </main>
 
       {/* Mobile Bottom Navigation (Floating) */}
       <div className="md:hidden fixed bottom-6 left-4 right-4 z-40">
-        <div className="bg-white/80 backdrop-blur-lg border border-white/50 rounded-2xl shadow-[0_8px_30px_rgb(0,0,0,0.12)] p-2 flex justify-around items-center">
-          <Link 
-            to="/" 
+        <div className="bg-white/90 backdrop-blur-xl border border-gray-200/50 rounded-2xl shadow-[0_15px_35px_rgba(0,0,0,0.12)] p-2 flex justify-around items-center">
+          <button 
+            onClick={(e) => {
+              if (location.pathname === '/') {
+                handleHomeClick(e);
+              } else {
+                navigate('/');
+              }
+            }}
             className={cn(
-              "p-3 rounded-xl transition-all duration-200",
-              location.pathname === '/' ? "bg-indigo-600 text-white shadow-md scale-110" : "text-gray-500 hover:bg-gray-100"
+              "p-3 rounded-xl transition-all duration-300",
+              location.pathname === '/' ? "bg-indigo-600 text-white shadow-lg shadow-indigo-200 scale-110" : "text-gray-400 hover:bg-gray-100"
             )}
           >
-            <div className="flex flex-col items-center">
-              <Code size={20} />
-            </div>
-          </Link>
+            <Code size={22} />
+          </button>
           
-          <Link 
-            to="/sell" 
+          <button 
+            onClick={() => protectedNavigate('/sell')}
             className={cn(
-              "p-3 rounded-xl transition-all duration-200",
-              location.pathname === '/sell' ? "bg-indigo-600 text-white shadow-md scale-110" : "text-gray-500 hover:bg-gray-100"
+              "p-3 rounded-xl transition-all duration-300",
+              location.pathname === '/sell' ? "bg-indigo-600 text-white shadow-lg shadow-indigo-200 scale-110" : "text-gray-400 hover:bg-gray-100"
             )}
           >
-            <div className="flex flex-col items-center">
-              <PackagePlus size={20} />
-            </div>
-          </Link>
+            <PackagePlus size={22} />
+          </button>
 
-          <Link 
-            to="/dashboard" 
+          <button 
+            onClick={() => protectedNavigate('/dashboard')}
             className={cn(
-              "p-3 rounded-xl transition-all duration-200",
-              location.pathname === '/dashboard' ? "bg-indigo-600 text-white shadow-md scale-110" : "text-gray-500 hover:bg-gray-100"
+              "p-3 rounded-xl transition-all duration-300",
+              location.pathname === '/dashboard' ? "bg-indigo-600 text-white shadow-lg shadow-indigo-200 scale-110" : "text-gray-400 hover:bg-gray-100"
             )}
           >
-            <div className="flex flex-col items-center">
-              <LayoutDashboard size={20} />
-            </div>
-          </Link>
+            <LayoutDashboard size={22} />
+          </button>
 
           {isAdmin && (
-            <Link 
-              to="/admin" 
+            <button 
+              onClick={() => navigate('/admin')}
               className={cn(
-                "p-3 rounded-xl transition-all duration-200",
-                location.pathname === '/admin' ? "bg-indigo-600 text-white shadow-md scale-110" : "text-gray-500 hover:bg-gray-100"
+                "p-3 rounded-xl transition-all duration-300",
+                location.pathname === '/admin' ? "bg-indigo-600 text-white shadow-lg shadow-indigo-200 scale-110" : "text-gray-400 hover:bg-gray-100"
               )}
             >
-              <div className="flex flex-col items-center">
-                <ShieldCheck size={20} />
-              </div>
-            </Link>
+              <ShieldCheck size={22} />
+            </button>
           )}
 
           {!user && (
             <button 
-              onClick={handleLogin}
-              className="p-3 text-gray-500 hover:bg-gray-100 rounded-xl transition-all duration-200"
+              onClick={() => setShowAuthModal(true)}
+              className="p-3 text-gray-400 hover:bg-gray-100 rounded-xl transition-all duration-200"
             >
-              <UserCircle size={20} />
+              <UserCircle size={22} />
             </button>
           )}
         </div>
       </div>
+
+      {/* Auth Guard Modal */}
+      <AnimatePresence>
+        {showAuthModal && (
+          <div className="fixed inset-0 z-[100] flex items-end sm:items-center justify-center p-4">
+            <motion.div 
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setShowAuthModal(false)}
+              className="absolute inset-0 bg-gray-900/40 backdrop-blur-sm"
+            />
+            <motion.div 
+              initial={{ opacity: 0, y: 100, scale: 0.95 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              exit={{ opacity: 0, y: 100, scale: 0.95 }}
+              className="relative bg-white w-full max-w-sm rounded-3xl shadow-2xl overflow-hidden"
+            >
+              <div className="bg-indigo-600 p-10 text-white text-center relative overflow-hidden">
+                <div className="absolute top-0 right-0 w-24 h-24 bg-white/10 rounded-full translate-x-8 -translate-y-8 blur-2xl"></div>
+                <div className="relative z-10">
+                  <div className="w-16 h-16 bg-white/20 backdrop-blur-md rounded-2xl flex items-center justify-center mx-auto mb-6 shadow-xl border border-white/10">
+                    <LogIn size={32} />
+                  </div>
+                  <h3 className="text-2xl font-black tracking-tight mb-2">Login Required</h3>
+                  <p className="text-indigo-100/80 text-sm font-medium">Please sign in with your IIT email to access this feature.</p>
+                </div>
+              </div>
+              
+              <div className="p-8 space-y-3">
+                <button
+                  onClick={handleLogin}
+                  className="w-full flex items-center justify-center gap-3 py-4 bg-indigo-600 text-white font-black uppercase tracking-widest text-xs rounded-xl shadow-lg shadow-indigo-100 hover:bg-indigo-700 transition active:scale-95"
+                >
+                  <LogIn size={18} />
+                  Login with Google
+                </button>
+                <button
+                  onClick={() => setShowAuthModal(false)}
+                  className="w-full py-4 bg-gray-100 text-gray-500 font-bold uppercase tracking-widest text-xs rounded-xl hover:bg-gray-200 transition active:scale-95"
+                >
+                  Cancel
+                </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
 
       {/* Footer */}
       <footer className="bg-white border-t border-gray-200 mt-auto">
