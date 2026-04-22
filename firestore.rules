@@ -82,7 +82,7 @@ service cloud.firestore {
              data.productAge is string && data.productAge.size() <= 50 &&
              data.price is number && data.price >= 0 &&
              data.isPriceNegotiable is bool &&
-             data.images is list && data.images.size() <= 10 &&
+             data.images is list && data.images.size() <= 20 &&
              data.sellerId is string && data.sellerId.size() <= 128 &&
              data.sellerName is string && data.sellerName.size() <= 100 &&
              data.sellerEmail is string && data.sellerEmail.matches('.+@iitdh\\.ac\\.in$') &&
@@ -116,7 +116,7 @@ service cloud.firestore {
         incoming().description is string && incoming().description.size() <= 5000 &&
         incoming().price is number && incoming().price >= 0 &&
         incoming().status is string && incoming().status.matches('^(active|sold|expired)$') &&
-        incoming().images is list && incoming().images.size() <= 10 &&
+        incoming().images is list && incoming().images.size() <= 20 &&
         incoming().updatedAt is number
       ) || (
         // Public signals (Analytics)

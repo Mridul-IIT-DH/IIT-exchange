@@ -7,6 +7,8 @@ import path from "path";
 import { fileURLToPath } from "url";
 import dotenv from "dotenv";
 import admin from "firebase-admin";
+import helmet from "helmet";
+import rateLimit from "express-rate-limit";
 
 // Load environment variables for development
 dotenv.config();
@@ -60,6 +62,36 @@ async function startServer() {
   const app = express();
   const PORT = Number(process.env.PORT) || 3000;
 
+  // Trust the first proxy to ensure express-rate-limit correctly captures 
+  // the client's IP from the 'X-Forwarded-For' headers provided by Cloud Run / Nginx.
+  app.set("trust proxy", 1);
+
+  // Enterprise Security: Helmet headers
+  app.use(helmet({
+    contentSecurityPolicy: false, // CSP blocks inline scripts in Vite dev mode, managed by platform
+    crossOriginEmbedderPolicy: false // Allows loading external images (Cloudinary)
+  }));
+
+  // Enterprise Security: Rate Limiting
+  const apiLimiter = rateLimit({
+    windowMs: 15 * 60 * 1000, 
+    max: 500, // Limit each IP to 500 requests per 15 mins
+    standardHeaders: true,
+    legacyHeaders: false,
+    message: { error: 'Too many requests from this IP, please try again after 15 minutes' }
+  });
+  
+  // Stricter limiter for image uploads
+  const uploadLimiter = rateLimit({
+    windowMs: 60 * 60 * 1000, // 1 hour
+    max: 100, // strictly up to 100 images per hour per IP
+    standardHeaders: true,
+    legacyHeaders: false,
+    message: { error: 'Upload limit exceeded, please try again in an hour.' }
+  });
+
+  app.use('/api/', apiLimiter);
+
   app.use(express.json());
 
   // Initialize Cloudinary
@@ -70,7 +102,7 @@ async function startServer() {
   });
 
   // API Route to upload image to Cloudinary (secure signed upload via server)
-  app.post("/api/images/upload", requireAuth, upload.single("file"), async (req, res) => {
+  app.post("/api/images/upload", uploadLimiter, requireAuth, upload.single("file"), async (req, res) => {
     try {
       if (!req.file) {
         return res.status(400).json({ error: "No image file provided" });

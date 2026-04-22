@@ -102,7 +102,9 @@ export default function Admin() {
         try {
           const q = query(productsRef);
           const snap = await getDocs(q);
-          setListings(snap.docs.map(d => ({ id: d.id, ...d.data() })));
+          const items = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+          items.sort((a: any, b: any) => (a.title || '').localeCompare(b.title || ''));
+          setListings(items);
           console.log(`Admin [Data]: Successfully loaded ${snap.docs.length} listings`);
         } catch (err) {
           handleFirestoreError(err, 'list', 'products');
@@ -113,7 +115,9 @@ export default function Admin() {
         try {
           const q = query(usersRef);
           const snap = await getDocs(q);
-          setSiteUsers(snap.docs.map(d => ({ id: d.id, ...d.data() })));
+          const items = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+          items.sort((a: any, b: any) => (a.name || '').localeCompare(b.name || ''));
+          setSiteUsers(items);
           console.log(`Admin [Data]: Successfully loaded ${snap.docs.length} users`);
         } catch (err) {
           handleFirestoreError(err, 'list', 'users');
@@ -365,17 +369,17 @@ export default function Admin() {
                         {formatSafeDate(l.createdAt, 'MMM d, h:mm a')}
                       </td>
                       <td className="px-6 py-4 text-right">
-                        <div className="flex justify-end gap-1">
+                        <div className="flex justify-end gap-2">
                           <button 
                             onClick={() => navigate(`/product/${l.id}`)}
-                            className="p-1.5 text-gray-400 hover:text-indigo-600 transition"
+                            className="p-2 bg-indigo-50 text-indigo-600 hover:bg-indigo-100 rounded-lg transition-all active:scale-90"
                             title="View Listing"
                           >
                             <ExternalLink size={16} />
                           </button>
                           <button 
                             onClick={() => navigate(`/edit/${l.id}`)}
-                            className="p-1.5 text-gray-400 hover:text-indigo-600 transition"
+                            className="p-2 bg-blue-50 text-blue-600 hover:bg-blue-100 rounded-lg transition-all active:scale-90"
                             title="Edit Listing"
                           >
                             <Edit3 size={16} />
@@ -383,7 +387,7 @@ export default function Admin() {
                           {l.status === 'active' && (
                             <button 
                               onClick={() => handleMarkSold(l.id)}
-                              className="p-1.5 text-gray-400 hover:text-green-600 transition"
+                              className="p-2 bg-green-50 text-green-600 hover:bg-green-100 rounded-lg transition-all active:scale-90"
                               title="Mark as Sold"
                             >
                               <Tag size={16} />
@@ -391,7 +395,7 @@ export default function Admin() {
                           )}
                           <button 
                             onClick={() => handleDeleteListing(l.id, l.images)}
-                            className="p-1.5 text-gray-400 hover:text-red-600 transition"
+                            className="p-2 bg-red-50 text-red-600 hover:bg-red-100 rounded-lg transition-all active:scale-90"
                             title="Delete Listing"
                           >
                             <Trash2 size={16} />

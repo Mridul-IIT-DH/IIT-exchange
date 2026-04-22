@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { doc, setDoc, updateDoc, increment, getDoc } from 'firebase/firestore';
+import { doc, setDoc, updateDoc, increment, getDoc, collection, query, where, getCountFromServer, getDocs } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 import { useAuth } from '../contexts/AuthContext';
 import { IndianRupee, ImagePlus, X, AlertCircle, Camera } from 'lucide-react';
@@ -132,13 +132,39 @@ export default function Sell() {
       return;
     }
 
-    if (!isEditMode && profile.listingsCountToday >= 20) {
-      toast.error('Daily listing limit reached (Max 20). Please try again tomorrow.');
-      return;
-    }
-
     setLoading(true);
+
     try {
+      if (!isEditMode && !isAdmin) {
+        const midnight = new Date();
+        midnight.setHours(0, 0, 0, 0);
+
+        let countToday = 0;
+        try {
+          const q = query(
+            collection(db, 'products'),
+            where('sellerId', '==', user.uid),
+            where('createdAt', '>=', midnight.getTime())
+          );
+          const snapshot = await getCountFromServer(q);
+          countToday = snapshot.data().count;
+        } catch (indexError) {
+          // Fallback if composite index is missing
+          const fallbackQ = query(
+            collection(db, 'products'),
+            where('sellerId', '==', user.uid)
+          );
+          const snap = await getDocs(fallbackQ);
+          countToday = snap.docs.filter(d => d.data().createdAt >= midnight.getTime()).length;
+        }
+
+        if (countToday >= 10) {
+          toast.error('Daily listing limit reached (Max 10). Please try again tomorrow.');
+          setLoading(false);
+          return;
+        }
+      }
+
       let newlyUploadedUrls: string[] = [];
       const numPrice = price ? parseInt(price, 10) : 0;
 
@@ -174,9 +200,13 @@ export default function Sell() {
               const errorText = await response.text();
               let errorMessage = `Status ${response.status}`;
               try {
-                const errJson = JSON.parse(errorText);
-                if (errJson.error) {
-                  errorMessage = errJson.error;
+                if (errorText.trim().startsWith('<')) {
+                   errorMessage = "Server connection lost (Proxy dropped/Too Large).";
+                } else {
+                  const errJson = JSON.parse(errorText);
+                  if (errJson.error) {
+                    errorMessage = errJson.error;
+                  }
                 }
               } catch (e) {
                 errorMessage = `${response.status} Proxy Error`;
@@ -187,6 +217,9 @@ export default function Sell() {
 
             const text = await response.text();
             try {
+               if (text.trim().startsWith('<')) {
+                  throw new Error("Received HTML instead of JSON. Server proxy dropped.");
+               }
                const data = JSON.parse(text);
                newlyUploadedUrls.push(data.secure_url);
             } catch (jsonErr) {
@@ -259,9 +292,6 @@ export default function Sell() {
 
         await setDoc(doc(db, 'products', productId), productData);
         
-        await updateDoc(doc(db, 'users', user.uid), {
-          listingsCountToday: increment(1)
-        });
         toast.success('Listing created successfully!');
       }
 

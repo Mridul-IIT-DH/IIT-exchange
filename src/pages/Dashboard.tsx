@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { collection, query, where, orderBy, getDocs, doc, updateDoc, deleteDoc, getDoc } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 import { useAuth } from '../contexts/AuthContext';
-import { IndianRupee, Trash2, Tag, Clock, User as UserIcon, Heart, Phone, Edit2, Save, X as CloseIcon, ShieldCheck, Mail, Package, Copy } from 'lucide-react';
+import { IndianRupee, Trash2, Tag, Clock, User as UserIcon, Heart, Phone, Edit2, Save, X as CloseIcon, ShieldCheck, Mail, Package, Copy, Eye } from 'lucide-react';
 import { formatDistanceToNow, format } from 'date-fns';
 import { Link, useNavigate } from 'react-router-dom';
 import { cn, isValidPhoneNumber } from '../lib/utils';
@@ -301,6 +301,11 @@ export default function Dashboard() {
                               {product.isPriceNegotiable && product.price === 0 ? "DISCUSS" : <><IndianRupee size={12} className="mr-0.5"/> {product.price.toLocaleString()}</>}
                             </span>
                             <span className="flex items-center gap-1.5"><Clock size={12} /> {format(product.createdAt, 'MMM d, yyyy')}</span>
+                            {product.contactClicks > 0 && (
+                              <span className="text-blue-500 flex items-center gap-1.5" title="Number of people who revealed your contact info">
+                                <Eye size={12} /> {product.contactClicks} REVEALS
+                              </span>
+                            )}
                             {listingsSubTab === 'active' && (
                               <span className="text-amber-500 flex items-center gap-1.5">
                                 <Clock size={12} /> {formatDistanceToNow(product.expiresAt, { addSuffix: true }).toUpperCase()}
@@ -312,7 +317,7 @@ export default function Dashboard() {
                         <div className="flex items-center gap-3 w-full sm:w-auto">
                           <Link 
                             to={`/edit/${product.id}`}
-                            className="flex-1 sm:flex-none p-4 bg-gray-50 text-gray-500 hover:text-indigo-600 hover:bg-indigo-50 rounded-2xl transition-all active:scale-90"
+                            className="flex-1 sm:flex-none p-4 bg-blue-50 text-blue-600 hover:bg-blue-100 rounded-2xl transition-all active:scale-90"
                             title="Edit"
                           >
                             <Edit2 size={20} strokeWidth={2.5} />
@@ -321,7 +326,7 @@ export default function Dashboard() {
                           {listingsSubTab === 'active' && (
                             <button 
                               onClick={() => handleStatusChange(product.id, 'sold')}
-                              className="flex-1 sm:flex-none p-4 bg-gray-50 text-green-500 hover:bg-green-50 rounded-2xl transition-all active:scale-90"
+                              className="flex-1 sm:flex-none p-4 bg-green-50 text-green-600 hover:bg-green-100 rounded-2xl transition-all active:scale-90"
                               title="Mark as Sold"
                             >
                               <Tag size={20} strokeWidth={2.5} />
@@ -340,7 +345,7 @@ export default function Dashboard() {
 
                           <button 
                             onClick={() => setListingToDelete({ id: product.id, images: product.images })}
-                            className="flex-1 sm:flex-none p-4 bg-red-50 text-red-500 hover:bg-red-100 rounded-2xl transition-all active:scale-90"
+                            className="flex-1 sm:flex-none p-4 bg-red-50 text-red-600 hover:bg-red-100 rounded-2xl transition-all active:scale-90"
                             title="Delete"
                           >
                             <Trash2 size={20} strokeWidth={2.5} />
@@ -542,16 +547,16 @@ export default function Dashboard() {
                       </div>
                     </div>
 
-                    <div className="grid grid-cols-2 gap-6">
-                      <div className="bg-indigo-600 p-8 rounded-[40px] text-white shadow-2xl shadow-indigo-200 relative overflow-hidden group">
+                    <div className="grid grid-cols-2 gap-4 sm:gap-6">
+                      <div className="bg-indigo-600 p-5 sm:p-8 rounded-[30px] sm:rounded-[40px] text-white shadow-2xl shadow-indigo-200 relative overflow-hidden group">
                         <Package className="absolute -right-6 -bottom-6 size-24 opacity-10 group-hover:scale-110 transition-transform duration-700" />
-                        <p className="text-[11px] font-black uppercase tracking-widest opacity-70 mb-2">Total Listings</p>
-                        <p className="text-5xl font-black italic tracking-tighter">{products.length}</p>
+                        <p className="text-[9px] sm:text-[11px] font-black uppercase tracking-wider sm:tracking-widest opacity-70 mb-1 sm:mb-2 line-clamp-2">Total Listings</p>
+                        <p className="text-4xl sm:text-5xl font-black italic tracking-tighter">{products.length}</p>
                       </div>
-                       <div className="bg-white border-2 border-emerald-500/10 p-8 rounded-[40px] text-emerald-600 relative overflow-hidden group">
+                       <div className="bg-white border-2 border-emerald-500/10 p-5 sm:p-8 rounded-[30px] sm:rounded-[40px] text-emerald-600 relative overflow-hidden group">
                         <Tag className="absolute -right-6 -bottom-6 size-24 opacity-5 group-hover:scale-110 transition-transform duration-700" />
-                        <p className="text-[11px] font-black uppercase tracking-widest opacity-60 mb-2 text-emerald-500">Successful Deals</p>
-                        <p className="text-5xl font-black italic tracking-tighter text-emerald-600">{products.filter(p => p.status === 'sold').length}</p>
+                        <p className="text-[9px] sm:text-[11px] font-black uppercase tracking-wider sm:tracking-widest opacity-60 mb-1 sm:mb-2 text-emerald-500 line-clamp-2">Successful Deals</p>
+                        <p className="text-4xl sm:text-5xl font-black italic tracking-tighter text-emerald-600">{products.filter(p => p.status === 'sold').length}</p>
                       </div>
                     </div>
                   </div>

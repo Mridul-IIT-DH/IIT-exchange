@@ -217,12 +217,19 @@ export default function ProductDetail() {
           <div className="py-10 px-8 lg:pr-12 flex flex-col">
             <div className="flex justify-between items-start gap-4">
               <div className="flex-1">
-                <h1 className="text-4xl font-black text-black tracking-tightest leading-none uppercase italic">
+                <h1 className="text-4xl font-black text-black tracking-tightest leading-none uppercase italic break-words line-clamp-2">
                   {product.title}
                 </h1>
-                <p className="text-[10px] font-black text-black mt-4 uppercase tracking-[0.2em] italic">
-                  Listed {formatDistanceToNow(product.createdAt, { addSuffix: true })}
-                </p>
+                <div className="flex items-center gap-4 mt-4 flex-wrap">
+                  <p className="text-[10px] font-black text-black uppercase tracking-[0.2em] italic">
+                    Listed {formatDistanceToNow(product.createdAt, { addSuffix: true })}
+                  </p>
+                  {product.contactClicks > 0 && (
+                    <span className="text-[10px] bg-orange-50 text-orange-600 border border-orange-100 px-3 py-1 rounded-full font-black flex items-center gap-1.5 uppercase tracking-widest italic" title={`${product.contactClicks} people were interested enough to reveal contact info`}>
+                      🔥 {product.contactClicks} Interest
+                    </span>
+                  )}
+                </div>
               </div>
               <div className="flex items-center gap-3">
                 <button
@@ -260,13 +267,13 @@ export default function ProductDetail() {
               )}
               <div className="bg-indigo-50/50 p-5 rounded-3xl border border-indigo-100 flex-1 min-w-[140px]">
                 <p className="text-[9px] font-black uppercase tracking-widest text-indigo-700 mb-2 italic">Campus Value</p>
-                <div className="flex items-center justify-between">
+                <div className="flex flex-col items-start gap-1">
                   <div className="flex items-baseline gap-1">
                     <IndianRupee size={16} className="text-indigo-600 self-center" strokeWidth={3} />
                     <span className="text-2xl font-black text-indigo-700 tracking-tighter italic">{product.price.toLocaleString()}</span>
                   </div>
                   {product.isPriceNegotiable && (
-                    <span className="bg-indigo-600 text-white text-[8px] font-bold px-2 py-0.5 rounded-full uppercase tracking-tighter">Negotiable</span>
+                    <span className="bg-indigo-600 text-white text-[8px] font-bold px-2 py-0.5 rounded-full uppercase tracking-tighter w-fit">Negotiable</span>
                   )}
                 </div>
               </div>
