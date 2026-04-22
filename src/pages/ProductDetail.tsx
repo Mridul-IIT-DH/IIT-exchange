@@ -371,31 +371,37 @@ export default function ProductDetail() {
               ) : contactRevealed ? (
                 <div className="space-y-4">
                   <div className="bg-white p-3 rounded-xl border border-gray-100 flex items-center justify-between gap-3">
-                    <div className="flex items-center gap-3">
-                      <Phone size={18} className="text-indigo-600" />
-                      <a href={`tel:${product.sellerPhone}`} className="text-sm font-bold text-gray-900 hover:underline">{product.sellerPhone}</a>
+                    <div className="flex items-center gap-3 min-w-0 flex-1">
+                      <Phone size={18} className="text-indigo-600 shrink-0" />
+                      <div className="flex flex-col min-w-0">
+                        <span className="text-[9px] uppercase tracking-widest text-gray-400 font-black mb-0.5">Phone Number</span>
+                        <a href={`tel:${product.sellerPhone}`} className="text-xs sm:text-sm font-bold text-gray-900 hover:underline truncate">{product.sellerPhone}</a>
+                      </div>
                     </div>
                     <button 
                       onClick={() => {
                         navigator.clipboard.writeText(product.sellerPhone);
                         toast.success('Phone copied to clipboard');
                       }}
-                      className="text-gray-400 hover:text-indigo-600 p-1 transition"
+                      className="text-gray-400 hover:text-indigo-600 p-1 shrink-0 transition"
                     >
                       <Copy size={16} />
                     </button>
                   </div>
                   <div className="bg-white p-3 rounded-xl border border-gray-100 flex items-center justify-between gap-3">
-                    <div className="flex items-center gap-3">
-                      <Mail size={18} className="text-indigo-600" />
-                      <a href={`mailto:${product.sellerEmail}`} className="text-sm font-bold text-gray-900 hover:underline">{product.sellerEmail}</a>
+                    <div className="flex items-center gap-3 min-w-0 flex-1">
+                      <Mail size={18} className="text-indigo-600 shrink-0" />
+                      <div className="flex flex-col min-w-0">
+                        <span className="text-[9px] uppercase tracking-widest text-gray-400 font-black mb-0.5">Email</span>
+                        <a href={`mailto:${product.sellerEmail}`} className="text-xs sm:text-sm font-bold text-gray-900 hover:underline truncate">{product.sellerEmail}</a>
+                      </div>
                     </div>
                     <button 
                       onClick={() => {
                         navigator.clipboard.writeText(product.sellerEmail);
                         toast.success('Email copied to clipboard');
                       }}
-                      className="text-gray-400 hover:text-indigo-600 p-1 transition"
+                      className="text-gray-400 hover:text-indigo-600 p-1 shrink-0 transition"
                     >
                       <Copy size={16} />
                     </button>

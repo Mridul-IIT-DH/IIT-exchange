@@ -3,7 +3,7 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { doc, setDoc, updateDoc, increment, getDoc } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 import { useAuth } from '../contexts/AuthContext';
-import { IndianRupee, ImagePlus, X, AlertCircle } from 'lucide-react';
+import { IndianRupee, ImagePlus, X, AlertCircle, Camera } from 'lucide-react';
 import toast from 'react-hot-toast';
 import imageCompression from 'browser-image-compression';
 
@@ -96,8 +96,8 @@ export default function Sell() {
     if (e.target.files) {
       const selectedFiles = Array.from(e.target.files);
       const totalImages = images.length + existingImages.length + selectedFiles.length;
-      if (totalImages > 5) {
-        toast.error('Maximum 5 images allowed completely (including existing)');
+      if (totalImages > 20) {
+        toast.error('Maximum 20 images allowed completely (including existing)');
         return;
       }
       
@@ -132,8 +132,8 @@ export default function Sell() {
       return;
     }
 
-    if (!isEditMode && profile.listingsCountToday >= 10) {
-      toast.error('Daily listing limit reached (Max 10). Please try again tomorrow.');
+    if (!isEditMode && profile.listingsCountToday >= 20) {
+      toast.error('Daily listing limit reached (Max 20). Please try again tomorrow.');
       return;
     }
 
@@ -146,8 +146,8 @@ export default function Sell() {
       if (images.length > 0) {
         try {
           const compressionOptions = {
-            maxSizeMB: 1, 
-            maxWidthOrHeight: 1920,
+            maxSizeMB: 0.8, // strictly below 1MB to prevent proxy drops
+            maxWidthOrHeight: 1200,
             useWebWorker: false,
             initialQuality: 0.8,
           };
@@ -179,13 +179,20 @@ export default function Sell() {
                   errorMessage = errJson.error;
                 }
               } catch (e) {
-                errorMessage = errorText;
+                errorMessage = `${response.status} Proxy Error`;
+                console.error("Non-JSON Server Error:", errorText);
               }
               throw new Error(`Server: ${errorMessage}`);
             }
 
-            const data = await response.json();
-            newlyUploadedUrls.push(data.secure_url);
+            const text = await response.text();
+            try {
+               const data = JSON.parse(text);
+               newlyUploadedUrls.push(data.secure_url);
+            } catch (jsonErr) {
+               console.error("Invalid Response body:", text);
+               throw new Error("Server connection interrupted. Try uploading smaller images.");
+            }
             toast.dismiss(`process-${file.name}`);
           }
         } catch (uploadError: any) {
@@ -445,22 +452,36 @@ export default function Sell() {
             </AnimatePresence>
             
             {/* Add Image Button */}
-            {(existingImages.length + images.length) < 5 && (
-              <motion.label 
+            {(existingImages.length + images.length) < 20 && (
+              <motion.div 
                 whileHover={{ scale: 1.02 }}
-                whileTap={{ scale: 0.98 }}
-                className="aspect-square border-4 border-dashed border-gray-200 rounded-3xl flex flex-col items-center justify-center text-gray-500 hover:text-indigo-600 hover:border-indigo-200 hover:bg-indigo-50/30 cursor-pointer transition-all duration-300"
+                className="aspect-square border-4 border-dashed border-gray-200 rounded-3xl flex flex-col items-center justify-center bg-gray-50/50 p-2 gap-2"
               >
-                <ImagePlus size={40} strokeWidth={2} />
-                <span className="text-[10px] font-black uppercase tracking-widest mt-4 italic text-black">Upload Assets</span>
-                <input 
-                   type="file" 
-                   accept="image/jpeg, image/png, image/webp" 
-                   multiple 
-                   className="hidden" 
-                   onChange={handleImageChange} 
-                />
-              </motion.label>
+                <div className="flex w-full gap-2 h-full">
+                  <label className="flex-1 flex flex-col items-center justify-center rounded-2xl bg-white hover:bg-indigo-50 border border-gray-100 text-indigo-600 cursor-pointer transition-colors group">
+                    <Camera size={28} className="group-hover:scale-110 transition-transform duration-300" strokeWidth={2} />
+                    <span className="text-[9px] font-black uppercase tracking-widest mt-2">Camera</span>
+                    <input 
+                      type="file" 
+                      accept="image/jpeg, image/png, image/webp" 
+                      capture="environment"
+                      className="hidden" 
+                      onChange={handleImageChange} 
+                    />
+                  </label>
+                  <label className="flex-1 flex flex-col items-center justify-center rounded-2xl bg-white hover:bg-indigo-50 border border-gray-100 text-indigo-600 cursor-pointer transition-colors group">
+                    <ImagePlus size={28} className="group-hover:scale-110 transition-transform duration-300" strokeWidth={2} />
+                    <span className="text-[9px] font-black uppercase tracking-widest mt-2">Gallery</span>
+                    <input 
+                      type="file" 
+                      accept="image/jpeg, image/png, image/webp" 
+                      multiple 
+                      className="hidden" 
+                      onChange={handleImageChange} 
+                    />
+                  </label>
+                </div>
+              </motion.div>
             )}
           </div>
         </div>

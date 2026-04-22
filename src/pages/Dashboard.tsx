@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { collection, query, where, orderBy, getDocs, doc, updateDoc, deleteDoc, getDoc } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 import { useAuth } from '../contexts/AuthContext';
-import { IndianRupee, Trash2, Tag, Clock, User as UserIcon, Heart, Phone, Edit2, Save, X as CloseIcon, ShieldCheck, Mail, Package } from 'lucide-react';
+import { IndianRupee, Trash2, Tag, Clock, User as UserIcon, Heart, Phone, Edit2, Save, X as CloseIcon, ShieldCheck, Mail, Package, Copy } from 'lucide-react';
 import { formatDistanceToNow, format } from 'date-fns';
 import { Link, useNavigate } from 'react-router-dom';
 import { cn, isValidPhoneNumber } from '../lib/utils';
@@ -466,12 +466,12 @@ export default function Dashboard() {
                       </div>
 
                       <div className="space-y-6">
-                        <div className="flex items-center gap-6 bg-gray-50/50 p-6 rounded-3xl border border-gray-100 group hover:border-indigo-100 transition-all">
-                          <div className="p-4 bg-white text-indigo-600 rounded-2xl shadow-xl border border-gray-100 group-hover:scale-110 transition-transform">
-                            <Phone size={24} strokeWidth={2.5} />
+                        <div className="flex items-center gap-4 sm:gap-6 bg-gray-50/50 p-4 sm:p-6 rounded-3xl border border-gray-100 group hover:border-indigo-100 transition-all min-w-0">
+                          <div className="p-3 sm:p-4 bg-white text-indigo-600 rounded-2xl shadow-xl border border-gray-100 group-hover:scale-110 transition-transform shrink-0">
+                            <Phone className="w-5 h-5 sm:w-6 sm:h-6" strokeWidth={2.5} />
                           </div>
-                          <div className="flex-1">
-                            <p className="text-[10px] text-gray-500 font-black uppercase tracking-widest mb-1">Phone Line</p>
+                          <div className="flex-1 min-w-0">
+                            <p className="text-[10px] text-gray-500 font-black uppercase tracking-widest mb-1">Phone Number</p>
                             {isEditingProfile ? (
                               <div className="flex gap-2">
                                 <input 
@@ -485,7 +485,7 @@ export default function Dashboard() {
                                 <motion.button 
                                   whileTap={{ scale: 0.9 }}
                                   onClick={handleUpdateProfile}
-                                  className="p-3 bg-indigo-600 text-white rounded-xl shadow-xl shadow-indigo-100"
+                                  className="p-3 bg-indigo-600 text-white rounded-xl shadow-xl shadow-indigo-100 shrink-0"
                                 >
                                   <Save size={20} />
                                 </motion.button>
@@ -495,24 +495,48 @@ export default function Dashboard() {
                                     setIsEditingProfile(false);
                                     setTempPhone(profile?.phone || '');
                                   }}
-                                  className="p-3 bg-white border border-gray-200 text-gray-600 rounded-xl hover:bg-gray-50"
+                                  className="p-3 bg-white border border-gray-200 text-gray-600 rounded-xl hover:bg-gray-50 shrink-0"
                                 >
                                   <CloseIcon size={20} />
                                 </motion.button>
                               </div>
                             ) : (
-                              <p className="text-xl font-black tracking-tight text-black">+91 {profile?.phone}</p>
+                              <div className="flex flex-row items-center gap-2">
+                                <p className="text-sm sm:text-md font-black tracking-tight text-gray-900 truncate">+91 {profile?.phone}</p>
+                                <button 
+                                  onClick={() => {
+                                    navigator.clipboard.writeText(`+91 ${profile?.phone}`);
+                                    toast.success('Phone copied to clipboard');
+                                  }}
+                                  className="text-gray-400 hover:text-indigo-600 p-1 shrink-0 transition"
+                                >
+                                  <Copy size={14} />
+                                </button>
+                              </div>
                             )}
                           </div>
                         </div>
 
-                        <div className="flex items-center gap-6 bg-gray-50/50 p-6 rounded-3xl border border-gray-100 group">
-                           <div className="p-4 bg-white text-indigo-600 rounded-2xl shadow-xl border border-gray-100">
-                            <Mail size={24} strokeWidth={2.5} />
+                        <div className="flex items-center gap-4 sm:gap-6 bg-gray-50/50 p-4 sm:p-6 rounded-3xl border border-gray-100 group min-w-0">
+                           <div className="p-3 sm:p-4 bg-white text-indigo-600 rounded-2xl shadow-xl border border-gray-100 shrink-0 group-hover:scale-110 transition-transform">
+                            <Mail className="w-5 h-5 sm:w-6 sm:h-6" strokeWidth={2.5} />
                           </div>
-                          <div className="flex-1">
-                            <p className="text-[10px] text-gray-300 font-black uppercase tracking-widest mb-1">Campus ID</p>
-                            <p className="text-md font-black tracking-tight text-gray-900 truncate">{profile?.email}</p>
+                          <div className="flex-1 min-w-0">
+                            <p className="text-[10px] text-gray-300 font-black uppercase tracking-widest mb-1">Student ID</p>
+                            <div className="flex flex-row items-center gap-2">
+                              <p className="text-sm sm:text-md font-black tracking-tight text-gray-900 truncate">{profile?.email}</p>
+                              <button 
+                                onClick={() => {
+                                  if (profile?.email) {
+                                    navigator.clipboard.writeText(profile.email);
+                                    toast.success('Email copied to clipboard');
+                                  }
+                                }}
+                                className="text-gray-400 hover:text-indigo-600 p-1 shrink-0 transition"
+                              >
+                                <Copy size={14} />
+                              </button>
+                            </div>
                           </div>
                         </div>
                       </div>
