@@ -88,79 +88,78 @@ export default function Home() {
 
   return (
     <div className="space-y-6 sm:space-y-12">
-      {/* Hero Section */}
-      <motion.div 
-        initial={{ opacity: 0, y: 30, scale: 0.98 }}
-        animate={{ opacity: 1, y: 0, scale: 1 }}
-        transition={snappySpring}
-        className="relative bg-indigo-700 rounded-3xl overflow-hidden shadow-2xl shadow-indigo-100"
-      >
-        <motion.div 
-          initial={{ scale: 1.1, opacity: 0 }}
-          animate={{ scale: 1, opacity: 0.25 }}
-          transition={{ duration: 1.2, ease: "easeOut" }}
-          className="absolute inset-0 bg-[url('https://picsum.photos/seed/college/1920/1080')] bg-cover bg-center"
-        ></motion.div>
-        <div className="relative p-8 sm:p-16 lg:px-24 lg:py-28 text-center sm:text-left">
-          <motion.h1 
-            initial={{ opacity: 0, x: -20 }}
-            animate={{ opacity: 1, x: 0 }}
-            transition={{ ...snappySpring, delay: 0.2 }}
-            className="text-4xl md:text-6xl font-black text-white tracking-tightest mb-6"
-          >
-            IIT EXCHANGE
-          </motion.h1>
-          <motion.p 
-            initial={{ opacity: 0, x: -20 }}
-            animate={{ opacity: 1, x: 0 }}
-            transition={{ ...snappySpring, delay: 0.3 }}
-            className="text-lg md:text-xl text-indigo-100 max-w-2xl mb-8 sm:mb-10 font-medium leading-relaxed"
-          >
-            The official campus-wide trading network for IIT Dharwad. Secure, fast, and exclusively for students.
-          </motion.p>
-          <motion.div 
+      {/* Minimalist Premium Hero Section */}
+      <section className="pt-4 pb-12 sm:pt-8 sm:pb-20 relative overflow-hidden">
+        {/* Subtle Background Accent */}
+        <div className="absolute top-0 right-0 -translate-y-1/4 translate-x-1/4 w-96 h-96 bg-blue-50 rounded-full blur-3xl opacity-60 pointer-events-none"></div>
+        <div className="absolute bottom-0 left-0 translate-y-1/4 -translate-x-1/4 w-64 h-64 bg-green-50 rounded-full blur-3xl opacity-40 pointer-events-none"></div>
+
+        <div className="max-w-4xl">
+          <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ ...snappySpring, delay: 0.4 }}
-            className="flex flex-wrap gap-4 justify-center sm:justify-start"
+            transition={snappySpring}
           >
-            <button 
-              onClick={() => {
-                if (!user) {
-                  signIn();
-                } else if (!profile) {
-                  navigate('/setup-profile');
-                } else {
-                  navigate('/sell');
-                }
-              }} 
-              className="px-10 py-4 bg-white text-indigo-700 font-black uppercase tracking-widest text-xs rounded-xl shadow-xl hover:scale-105 active:scale-95 transition-all"
-            >
-              Start Listing
-            </button>
+            <span className="inline-block text-[10px] font-black tracking-[0.3em] uppercase text-google-blue mb-6 px-4 py-1.5 bg-blue-50 rounded-full">
+              IIT Dharwad Marketplace
+            </span>
+            <h1 className="text-6xl md:text-8xl font-black text-black tracking-tightest leading-[0.85] uppercase italic mb-8">
+              IIT <span className="text-black non-italic font-light">Exchange</span>
+            </h1>
+            <p className="text-xl md:text-2xl text-gray-500 font-medium leading-tight mb-12 max-w-xl">
+              The official trading network. <span className="text-black">Secure, fast, and exclusively for campus.</span>
+            </p>
+
+            <div className="flex flex-wrap gap-4">
+              <button 
+                onClick={() => {
+                  if (!user) {
+                    signIn();
+                  } else if (!profile) {
+                    navigate('/setup-profile');
+                  } else {
+                    navigate('/sell');
+                  }
+                }} 
+                className="px-10 py-5 bg-black text-white font-black uppercase tracking-widest text-xs rounded-2xl shadow-[0_20px_50px_rgba(0,0,0,0.2)] hover:bg-gray-900 hover:scale-[1.02] active:scale-95 transition-all"
+              >
+                Start Listing
+              </button>
+              
+              {!user && (
+                <button 
+                  onClick={() => signIn()}
+                  className="px-10 py-5 bg-white border-2 border-google-blue text-google-blue font-black uppercase tracking-widest text-xs rounded-2xl hover:bg-blue-50 transition-all"
+                >
+                  Join Network
+                </button>
+              )}
+            </div>
           </motion.div>
         </div>
-      </motion.div>
+      </section>
 
       <div>
-        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-8 border-b border-gray-200 pb-6 gap-6">
-          <div className="flex items-center gap-3">
-            <div className="w-2 h-10 bg-indigo-600 rounded-full"></div>
-            <div>
-              <h2 className="text-3xl font-black text-black tracking-tightest uppercase italic">Listings</h2>
+        <div className="flex flex-col mb-12">
+          <div className="flex items-center gap-3 w-full">
+            <div className="flex flex-col">
+              <h2 className="text-4xl font-black text-black tracking-tightest uppercase italic">Listings</h2>
+              <div className="w-12 h-1.5 bg-google-yellow rounded-full mt-1"></div>
             </div>
           </div>
-          
-          <div className="relative w-full sm:w-96">
-            <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
-              <Search className="h-5 w-5 text-gray-600" />
+        </div>
+        
+        <div className="flex justify-start mb-12">
+          <div className="relative w-full sm:w-[450px]">
+            <div className="absolute inset-y-0 left-0 pl-6 flex items-center pointer-events-none">
+              <Search className="h-5 w-5 text-gray-400" />
             </div>
             <input 
               type="text"
-              placeholder="SEARCH LISTINGS, CATEGORIES..."
+              placeholder="SEARCH THE CAMPUS..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="block w-full pl-12 pr-6 py-4 bg-white border border-gray-200 rounded-2xl shadow-sm focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 outline-none transition-all font-bold text-sm tracking-wide placeholder:text-gray-400"
+              className="block w-full pl-14 pr-8 py-5 bg-white border border-gray-200 rounded-3xl shadow-2xl shadow-blue-900/[0.08] focus:ring-4 focus:ring-google-blue/10 focus:border-google-blue outline-none transition-all font-black text-xs tracking-widest uppercase placeholder:text-gray-400"
             />
           </div>
         </div>
@@ -214,7 +213,7 @@ export default function Home() {
               >
                 <Link 
                   to={`/product/${product.id}`} 
-                  className="group relative bg-white rounded-[32px] shadow-sm hover:shadow-2xl hover:shadow-indigo-100 border border-gray-200 overflow-hidden transition-all duration-300 flex flex-col h-full hover:-translate-y-2 active:scale-95"
+                  className="group relative bg-white rounded-[32px] shadow-sm hover:shadow-2xl hover:shadow-blue-100 border border-gray-100 overflow-hidden transition-all duration-300 flex flex-col h-full hover:-translate-y-2 active:scale-95"
                 >
                   <div className="aspect-[4/5] bg-gray-50 relative overflow-hidden">
                     {product.images && product.images.length > 0 ? (
@@ -227,7 +226,7 @@ export default function Home() {
                         referrerPolicy="no-referrer"
                       />
                     ) : (
-                      <div className="flex items-center justify-center w-full h-full text-gray-300">
+                      <div className="flex items-center justify-center w-full h-full text-gray-200">
                         <PackageSearch size={32} />
                       </div>
                     )}
@@ -239,7 +238,7 @@ export default function Home() {
                           initial={{ x: -20, opacity: 0 }}
                           animate={{ x: 0, opacity: 1 }}
                           transition={{ delay: 0.5 }}
-                          className="bg-indigo-600 text-white text-[9px] uppercase font-black px-3 py-1.5 rounded-full shadow-xl backdrop-blur-md tracking-widest border border-white/20"
+                          className="bg-google-blue text-white text-[9px] uppercase font-black px-4 py-2 rounded-full shadow-2xl tracking-widest border border-white/30"
                         >
                           NEW
                         </motion.span>
@@ -255,7 +254,7 @@ export default function Home() {
                       className={cn(
                         "absolute top-3 right-3 p-3 rounded-2xl backdrop-blur-xl border transition-all z-10 shadow-lg",
                         profile?.wishlist?.includes(product.id)
-                          ? "bg-red-500 border-red-400 text-white"
+                          ? "bg-google-red border-transparent text-white"
                           : "bg-white/40 border-white/40 text-gray-900"
                       )}
                     >
@@ -267,20 +266,20 @@ export default function Home() {
                     </motion.button>
 </div>
                   <div className="p-3 sm:p-4 flex-1 flex flex-col">
-                    <h3 className="text-sm sm:text-lg font-bold text-black line-clamp-1 group-hover:text-indigo-600 transition">
+                    <h3 className="text-sm sm:text-lg font-bold text-black line-clamp-1 group-hover:text-google-blue transition">
                       {product.title}
                     </h3>
                     <div className="mt-1 flex flex-col sm:flex-row sm:items-baseline gap-1 sm:gap-2">
                       {product.isPriceNegotiable && product.price === 0 ? (
-                        <span className="text-sm sm:text-lg font-bold text-black">Discuss Price</span>
+                        <span className="text-sm sm:text-lg font-bold text-google-blue">Discuss Price</span>
                       ) : (
                         <>
-                          <span className="text-base sm:text-xl font-black text-black flex items-center">
+                          <span className="text-base sm:text-xl font-black text-google-blue flex items-center">
                             <IndianRupee size={14} className="sm:size-[18px]" /> {product.price.toLocaleString()}
                           </span>
                           {product.isPriceNegotiable && (
-                             <span className="text-[8px] sm:text-[10px] uppercase font-black text-indigo-600 bg-indigo-50 border border-indigo-100 px-1.5 sm:px-2 py-0.5 rounded-full w-fit">
-                               Negotiable
+                             <span className="text-[8px] sm:text-[9px] uppercase font-black text-white bg-google-green px-2.5 sm:px-3 py-1 rounded-full w-fit shadow-lg shadow-green-100 border border-white/20 tracking-widest">
+                                Negotiable
                              </span>
                           )}
                         </>

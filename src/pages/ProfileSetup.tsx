@@ -53,11 +53,11 @@ export default function ProfileSetup() {
 
   return (
     <div className="max-w-md mx-auto py-12 px-4 animate-in fade-in zoom-in-95 duration-500">
-      <div className="bg-white rounded-3xl shadow-xl shadow-indigo-100/50 border border-gray-100 overflow-hidden">
-        <div className="bg-indigo-600 p-8 text-center text-white relative">
+      <div className="bg-white rounded-3xl shadow-xl shadow-blue-100/50 border border-gray-100 overflow-hidden">
+        <div className="bg-google-blue p-8 text-center text-white relative">
           <div className="absolute top-0 right-0 w-24 h-24 bg-white/10 rounded-full translate-x-12 -translate-y-12 blur-2xl"></div>
           <h2 className="text-2xl font-black tracking-tight mb-2">Welcome to IIT Exchange</h2>
-          <p className="text-indigo-100 text-sm font-medium opacity-90">One last step to join the community</p>
+          <p className="text-blue-50 font-medium opacity-90">One last step to join the community</p>
         </div>
         
         <div className="p-8 sm:p-10">
@@ -67,7 +67,7 @@ export default function ProfileSetup() {
 
           <form onSubmit={handleSubmit} className="space-y-6">
             <div>
-              <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1 shadow-none">Full Name</label>
+              <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">Full Name</label>
               <input 
                 type="text" 
                 disabled 
@@ -77,7 +77,7 @@ export default function ProfileSetup() {
             </div>
             
             <div>
-              <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1 shadow-none">University Email</label>
+              <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">University Email</label>
               <input 
                 type="text" 
                 disabled 
@@ -87,14 +87,14 @@ export default function ProfileSetup() {
             </div>
 
             <div>
-              <label className="block text-[10px] font-black text-gray-700 uppercase tracking-widest mb-1">Mobile Number <span className="text-indigo-500 text-base leading-none">*</span></label>
+              <label className="block text-[10px] font-black text-gray-700 uppercase tracking-widest mb-1">Mobile Number <span className="text-google-blue text-base leading-none">*</span></label>
               <input 
                 type="tel" 
                 required
                 value={phone}
                 onChange={(e) => setPhone(e.target.value)}
                 placeholder="10-digit phone number"
-                className="block w-full px-4 py-3 bg-white border-2 border-gray-50 rounded-xl text-gray-900 font-bold placeholder:text-gray-300 focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/10 outline-none transition-all"
+                className="block w-full px-4 py-3 bg-white border-2 border-gray-100 rounded-xl text-gray-900 font-bold placeholder:text-gray-300 focus:border-google-blue focus:ring-4 focus:ring-google-blue/10 outline-none transition-all"
                 autoFocus
               />
               <p className="mt-2 text-[10px] text-gray-400 font-medium">We'll never share your data outside the campus.</p>
@@ -103,7 +103,7 @@ export default function ProfileSetup() {
             <button
               type="submit"
               disabled={loading}
-              className="w-full flex justify-center py-4 px-4 bg-indigo-600 hover:bg-indigo-700 text-white font-black uppercase tracking-widest text-xs rounded-xl shadow-lg shadow-indigo-100 transition-all active:scale-[0.98] disabled:bg-indigo-300 disabled:shadow-none"
+              className="w-full flex justify-center py-4 px-4 bg-black hover:bg-gray-900 text-white font-black uppercase tracking-widest text-xs rounded-xl shadow-xl shadow-gray-200 transition-all active:scale-[0.98] disabled:bg-gray-300 disabled:shadow-none"
             >
               {loading ? 'Finalizing...' : 'Complete Profile Setup'}
             </button>

@@ -172,15 +172,20 @@ export default function Sell() {
       if (images.length > 0) {
         try {
           const compressionOptions = {
-            maxSizeMB: 0.8, // strictly below 1MB to prevent proxy drops
-            maxWidthOrHeight: 1200,
-            useWebWorker: false,
-            initialQuality: 0.8,
+            maxSizeMB: 0.5, // Reduced from 0.8 to be safer
+            maxWidthOrHeight: 1024, // Reduced from 1200
+            useWebWorker: true, // Switched to true for better UI performance
+            initialQuality: 0.7, // Reduced from 0.8
           };
 
           for (const file of images) {
             toast.loading(`Compressing ${file.name}...`, { id: `process-${file.name}` });
-            const compressedFile = await imageCompression(file as unknown as File, compressionOptions);
+            let compressedFile: any = file;
+            try {
+               compressedFile = await imageCompression(file as unknown as File, compressionOptions);
+            } catch (compErr) {
+               console.warn("Compression failed, using original:", compErr);
+            }
             
             toast.loading(`Uploading ${file.name} to server...`, { id: `process-${file.name}` });
             
@@ -198,40 +203,42 @@ export default function Sell() {
 
             if (!response.ok) {
               const errorText = await response.text();
-              let errorMessage = `Status ${response.status}`;
-              try {
-                if (errorText.trim().startsWith('<')) {
-                   errorMessage = "Server connection lost (Proxy dropped/Too Large).";
-                } else {
-                  const errJson = JSON.parse(errorText);
-                  if (errJson.error) {
-                    errorMessage = errJson.error;
-                  }
-                }
-              } catch (e) {
-                errorMessage = `${response.status} Proxy Error`;
-                console.error("Non-JSON Server Error:", errorText);
+              let errorMessage = `Server error ${response.status}`;
+              
+              if (errorText.includes('Cookie check') || errorText.includes('Action required')) {
+                 errorMessage = "Security session expired. Please refresh the page and try again.";
+              } else if (response.status === 413) {
+                 errorMessage = "File too large for the network proxy. Try a smaller image.";
+              } else {
+                 try {
+                   const errJson = JSON.parse(errorText);
+                   if (errJson.error) errorMessage = errJson.error;
+                 } catch (e) {
+                   console.error("Non-JSON Server Error:", errorText);
+                 }
               }
-              throw new Error(`Server: ${errorMessage}`);
+              throw new Error(errorMessage);
             }
 
             const text = await response.text();
             try {
                if (text.trim().startsWith('<')) {
-                  throw new Error("Received HTML instead of JSON. Server proxy dropped.");
+                  throw new Error("Received security page instead of data. Try smaller files or refresh.");
                }
                const data = JSON.parse(text);
                newlyUploadedUrls.push(data.secure_url);
             } catch (jsonErr) {
                console.error("Invalid Response body:", text);
-               throw new Error("Server connection interrupted. Try uploading smaller images.");
+               throw new Error("Network interruption. Try reducing image quality or quantity.");
             }
             toast.dismiss(`process-${file.name}`);
           }
         } catch (uploadError: any) {
           toast.dismiss();
           console.error("Upload Error:", uploadError);
-          toast.error(`Image upload failed: ${uploadError.message}. Proceeding anyway.`);
+          setLoading(false);
+          toast.error(`Listing failed: ${uploadError.message}`);
+          return; // Stop the flow instead of proceeding with broken images
         }
       }
 
@@ -311,7 +318,7 @@ export default function Sell() {
            initial={{ scale: 0.8, opacity: 0 }}
            animate={{ scale: 1, opacity: 1 }}
            transition={snappySpring}
-           className="animate-spin rounded-full h-10 w-10 border-b-2 border-indigo-600"
+           className="animate-spin rounded-full h-10 w-10 border-b-2 border-google-blue"
          ></motion.div>
       </div>
     );
@@ -340,13 +347,13 @@ export default function Sell() {
         animate={{ opacity: 1, y: 0 }}
         transition={{ ...snappySpring, delay: 0.1 }}
         onSubmit={handleSubmit} 
-        className="space-y-10 bg-white p-8 sm:p-12 rounded-[40px] shadow-2xl shadow-indigo-100 border border-gray-100 relative overflow-hidden"
+        className="space-y-10 bg-white p-8 sm:p-12 rounded-[40px] shadow-2xl shadow-blue-100/50 border border-gray-100 relative overflow-hidden"
       >
-        <div className="absolute top-0 right-0 w-32 h-32 bg-indigo-50/50 rounded-full translate-x-12 -translate-y-12 blur-3xl"></div>
+        <div className="absolute top-0 right-0 w-32 h-32 bg-blue-50/50 rounded-full translate-x-12 -translate-y-12 blur-3xl"></div>
 
         {/* Title */}
         <div className="relative">
-          <label className="block text-[11px] font-black text-black uppercase tracking-widest mb-2 italic">Product Name <span className="text-red-500">*</span></label>
+          <label className="block text-[11px] font-black text-black uppercase tracking-widest mb-2 italic">Product Name <span className="text-google-red">*</span></label>
           <input 
             type="text" 
             required
@@ -354,13 +361,13 @@ export default function Sell() {
             value={title}
             onChange={(e) => setTitle(e.target.value)}
             placeholder="E.G. ENGINEERING GRAPHICS KIT, MACBOOK AIR M1"
-            className="block w-full px-6 py-4 bg-gray-50 border border-gray-100 rounded-2xl focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 focus:bg-white outline-none transition-all font-black text-sm tracking-tight placeholder:text-gray-500"
+            className="block w-full px-6 py-4 bg-gray-50 border border-gray-100 rounded-2xl focus:ring-4 focus:ring-google-blue/10 focus:border-google-blue focus:bg-white outline-none transition-all font-black text-sm tracking-tight placeholder:text-gray-500"
           />
         </div>
 
         {/* Description */}
         <div>
-          <label className="block text-[11px] font-black text-black uppercase tracking-widest mb-2 italic">Detailed Description <span className="text-red-500">*</span></label>
+          <label className="block text-[11px] font-black text-black uppercase tracking-widest mb-2 italic">Detailed Description <span className="text-google-red">*</span></label>
           <textarea 
             required
             rows={4}
@@ -368,27 +375,27 @@ export default function Sell() {
             value={description}
             onChange={(e) => setDescription(e.target.value)}
             placeholder="DESCRIBE CONDITION, DEFECTS, OR SPECIFICATIONS..."
-            className="block w-full px-6 py-4 bg-gray-50 border border-gray-100 rounded-2xl focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 focus:bg-white outline-none transition-all font-bold text-sm tracking-tight leading-relaxed placeholder:text-gray-500"
+            className="block w-full px-6 py-4 bg-gray-50 border border-gray-100 rounded-2xl focus:ring-4 focus:ring-google-blue/10 focus:border-google-blue focus:bg-white outline-none transition-all font-bold text-sm tracking-tight leading-relaxed placeholder:text-gray-500"
           />
         </div>
 
         {/* Product Age */}
         <div>
-          <label className="block text-[11px] font-black text-black uppercase tracking-widest mb-2 italic">Product Age <span className="text-red-500">*</span></label>
+          <label className="block text-[11px] font-black text-black uppercase tracking-widest mb-2 italic">Product Age <span className="text-google-red">*</span></label>
           <input 
             type="text" 
             required
             value={productAge}
             onChange={(e) => setProductAge(e.target.value)}
             placeholder="E.G. 6 MONTHS, 2 SEMESTERS OLD..."
-            className="block w-full px-6 py-4 bg-gray-50 border border-gray-100 rounded-2xl focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 focus:bg-white outline-none transition-all font-black text-sm tracking-tight placeholder:text-gray-500"
+            className="block w-full px-6 py-4 bg-gray-50 border border-gray-100 rounded-2xl focus:ring-4 focus:ring-google-blue/10 focus:border-google-blue focus:bg-white outline-none transition-all font-black text-sm tracking-tight placeholder:text-gray-500"
           />
         </div>
 
         {/* Price Box */}
-        <div className="bg-indigo-50 p-8 rounded-[32px] border border-indigo-100 relative group">
+        <div className="bg-blue-50 p-8 rounded-[32px] border border-blue-100 relative group">
           <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-6 gap-4">
-            <h3 className="text-[11px] font-black text-indigo-700 uppercase tracking-[0.2em] italic">Valuation Control</h3>
+            <h3 className="text-[11px] font-black text-google-blue uppercase tracking-[0.2em] italic">Valuation Control</h3>
             <label className="relative inline-flex items-center cursor-pointer group">
               <input
                 type="checkbox"
@@ -396,14 +403,14 @@ export default function Sell() {
                 onChange={(e) => setIsNegotiable(e.target.checked)}
                 className="sr-only peer"
               />
-              <div className="w-11 h-6 bg-indigo-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-indigo-600 transition-all shadow-inner"></div>
-              <span className="ml-3 text-[11px] font-black text-indigo-700 uppercase tracking-widest">Negotiable</span>
+              <div className="w-11 h-6 bg-blue-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-google-blue transition-all shadow-inner"></div>
+              <span className="ml-3 text-[11px] font-black text-google-blue uppercase tracking-widest">Negotiable</span>
             </label>
           </div>
           
           <div className="relative">
             <div className="absolute inset-y-0 left-0 pl-6 flex items-center pointer-events-none">
-              <IndianRupee size={20} className="text-indigo-400" strokeWidth={3} />
+              <IndianRupee size={20} className="text-google-blue" strokeWidth={3} />
             </div>
             <input 
               type="number" 
@@ -412,7 +419,7 @@ export default function Sell() {
               onChange={(e) => setPrice(e.target.value)}
               onWheel={(e) => (e.target as HTMLInputElement).blur()}
               placeholder="ZERO / EMPTY FOR 'DISCUSS PRICE'"
-              className="block w-full pl-14 pr-6 py-5 bg-white border border-indigo-100 rounded-2xl shadow-inner focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 outline-none transition-all font-black text-xl tracking-tightest placeholder:text-indigo-200 placeholder:text-sm"
+              className="block w-full pl-14 pr-6 py-5 bg-white border border-blue-100 rounded-2xl shadow-inner focus:ring-4 focus:ring-google-blue/10 focus:border-google-blue outline-none transition-all font-black text-xl tracking-tightest placeholder:text-blue-200 placeholder:text-sm"
             />
           </div>
           
@@ -488,7 +495,7 @@ export default function Sell() {
                 className="aspect-square border-4 border-dashed border-gray-200 rounded-3xl flex flex-col items-center justify-center bg-gray-50/50 p-2 gap-2"
               >
                 <div className="flex w-full gap-2 h-full">
-                  <label className="flex-1 flex flex-col items-center justify-center rounded-2xl bg-white hover:bg-indigo-50 border border-gray-100 text-indigo-600 cursor-pointer transition-colors group">
+                  <label className="flex-1 flex flex-col items-center justify-center rounded-2xl bg-white hover:bg-blue-50 border border-gray-100 text-google-blue cursor-pointer transition-colors group">
                     <Camera size={28} className="group-hover:scale-110 transition-transform duration-300" strokeWidth={2} />
                     <span className="text-[9px] font-black uppercase tracking-widest mt-2">Camera</span>
                     <input 
@@ -499,7 +506,7 @@ export default function Sell() {
                       onChange={handleImageChange} 
                     />
                   </label>
-                  <label className="flex-1 flex flex-col items-center justify-center rounded-2xl bg-white hover:bg-indigo-50 border border-gray-100 text-indigo-600 cursor-pointer transition-colors group">
+                  <label className="flex-1 flex flex-col items-center justify-center rounded-2xl bg-white hover:bg-blue-50 border border-gray-100 text-google-blue cursor-pointer transition-colors group">
                     <ImagePlus size={28} className="group-hover:scale-110 transition-transform duration-300" strokeWidth={2} />
                     <span className="text-[9px] font-black uppercase tracking-widest mt-2">Gallery</span>
                     <input 
@@ -521,7 +528,7 @@ export default function Sell() {
           whileTap={{ scale: 0.98 }}
           type="submit"
           disabled={loading}
-          className="w-full flex justify-center py-6 px-4 bg-indigo-600 text-white rounded-3xl font-black uppercase tracking-widest text-[13px] shadow-2xl shadow-indigo-100 hover:bg-indigo-700 transition-all disabled:bg-indigo-300 disabled:shadow-none italic"
+          className="w-full flex justify-center py-6 px-4 bg-black text-white rounded-3xl font-black uppercase tracking-widest text-[13px] shadow-[0_20px_50px_rgba(0,0,0,0.15)] hover:bg-gray-900 transition-all disabled:bg-gray-300 disabled:shadow-none italic"
         >
           {loading 
             ? (isEditMode ? 'SYNCHRONIZING...' : 'INITIALIZING LISTING...') 

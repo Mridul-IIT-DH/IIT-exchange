@@ -16,20 +16,20 @@ export default function About() {
         initial={{ opacity: 0, y: 30 }}
         animate={{ opacity: 1, y: 0 }}
         transition={snappySpring}
-        className="bg-white rounded-[40px] shadow-2xl shadow-indigo-100 border border-gray-100 p-10 sm:p-16 relative overflow-hidden"
+        className="bg-white rounded-[40px] shadow-2xl shadow-blue-100 border border-gray-100 p-10 sm:p-16 relative overflow-hidden"
       >
-        <div className="absolute top-0 right-0 w-64 h-64 bg-indigo-50/50 rounded-full translate-x-24 -translate-y-24 blur-3xl opacity-50"></div>
+        <div className="absolute top-0 right-0 w-64 h-64 bg-blue-50/50 rounded-full translate-x-24 -translate-y-24 blur-3xl opacity-50"></div>
         
         <motion.div
            initial={{ opacity: 0, x: -20 }}
            animate={{ opacity: 1, x: 0 }}
            transition={{ ...snappySpring, delay: 0.1 }}
         >
-          <h1 className="text-5xl font-black text-gray-900 tracking-tightest uppercase italic underline decoration-indigo-600 decoration-8 underline-offset-8">ABOUT IIT EXCHANGE</h1>
+          <h1 className="text-5xl font-black text-gray-900 tracking-tightest uppercase italic underline decoration-google-blue decoration-8 underline-offset-8">ABOUT IIT EXCHANGE</h1>
         </motion.div>
         
         <div className="mt-12 text-gray-600 leading-relaxed font-bold text-lg tracking-tight space-y-8">
-          <p className="italic border-l-4 border-indigo-600 pl-6 py-2 bg-indigo-50/30 rounded-r-2xl">
+          <p className="italic border-l-4 border-google-blue pl-6 py-2 bg-blue-50/30 rounded-r-2xl">
             IIT Exchange is the exclusive, secure, and intuitive marketplace built specifically for the students, faculty, and staff of the Indian Institute of Technology (IIT) Dharwad.
           </p>
           <p>
@@ -39,9 +39,9 @@ export default function About() {
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mt-16">
           {[
-            { icon: ShieldCheck, title: 'Exclusive & Secure', bg: 'bg-indigo-50', text: 'text-indigo-600', desc: 'Only users with a verified @iitdh.ac.in email address can access seller contact information and post new items, ensuring dealing with unknown external parties is eliminated.' },
-            { icon: Leaf, title: 'Sustainable Campus', bg: 'bg-green-50', text: 'text-green-600', desc: 'Reduce waste by passing down textbooks, cycles, electronics, and drafting equipment to junior batches. Promote a circular economy right here on campus.' },
-            { icon: BookOpen, title: 'Student First', bg: 'bg-blue-50', text: 'text-blue-600', desc: 'Created to solve the exact problems students face: easily discovering required semester materials and getting fair prices without middle-men.' }
+            { icon: ShieldCheck, title: 'Exclusive & Secure', bg: 'bg-blue-50', text: 'text-google-blue', desc: 'Only users with a verified @iitdh.ac.in email address can access seller contact information and post new items, ensuring dealing with unknown external parties is eliminated.' },
+            { icon: Leaf, title: 'Sustainable Campus', bg: 'bg-green-50', text: 'text-google-green', desc: 'Reduce waste by passing down textbooks, cycles, electronics, and drafting equipment to junior batches. Promote a circular economy right here on campus.' },
+            { icon: BookOpen, title: 'Student First', bg: 'bg-red-50', text: 'text-google-red', desc: 'Created to solve the exact problems students face: easily discovering required semester materials and getting fair prices without middle-men.' }
           ].map((item, i) => (
             <motion.div 
               key={i}

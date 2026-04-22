@@ -196,7 +196,7 @@ export default function Admin() {
           animate={{ rotate: 360 }}
           transition={{ duration: 1.5, repeat: Infinity, ease: "linear" }}
         >
-          <RefreshCw className="text-indigo-600" size={32} />
+          <RefreshCw className="text-google-blue" size={32} />
         </motion.div>
         <p className="text-gray-500 font-bold uppercase tracking-widest text-[10px]">Authenicating Admin Authority...</p>
       </div>
@@ -227,7 +227,7 @@ export default function Admin() {
           <motion.div 
             whileHover={{ scale: 1.05, rotate: 5 }}
             whileTap={{ scale: 0.95 }}
-            className="p-4 bg-indigo-600 text-white rounded-[24px] shadow-2xl shadow-indigo-200"
+            className="p-4 bg-google-blue text-white rounded-[24px] shadow-2xl shadow-blue-200"
           >
             <ShieldCheck size={32} strokeWidth={2.5} />
           </motion.div>
@@ -240,7 +240,7 @@ export default function Admin() {
           whileHover={{ scale: 1.02 }}
           whileTap={{ scale: 0.98 }}
           onClick={fetchData}
-          className="flex items-center gap-3 px-6 py-3 bg-white border border-gray-100 rounded-2xl text-gray-900 shadow-xl shadow-gray-200/50 font-black text-xs uppercase tracking-widest hover:border-indigo-200 transition-all italic"
+          className="flex items-center gap-3 px-6 py-3 bg-white border border-gray-100 rounded-2xl text-gray-900 shadow-xl shadow-gray-200/50 font-black text-xs uppercase tracking-widest hover:border-blue-200 transition-all italic"
         >
           <RefreshCw size={14} className={loading ? "animate-spin" : ""} strokeWidth={3} /> Synchronize Data
         </motion.button>
@@ -249,8 +249,8 @@ export default function Admin() {
       {/* Stats Grid */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8 mb-16">
         {[
-          { label: 'Total Listings', val: stats.totalProducts, icon: Package, color: 'text-blue-600', bg: 'bg-blue-50' },
-          { label: 'Active Items', val: stats.activeProducts, icon: CheckCircle, color: 'text-green-600', bg: 'bg-green-50' },
+          { label: 'Total Listings', val: stats.totalProducts, icon: Package, color: 'text-google-blue', bg: 'bg-blue-50' },
+          { label: 'Active Items', val: stats.activeProducts, icon: CheckCircle, color: 'text-google-green', bg: 'bg-green-50' },
           { label: 'Total Users', val: stats.totalUsers, icon: Users, color: 'text-purple-600', bg: 'bg-purple-50' }
         ].map((stat, i) => (
           <motion.div 
@@ -278,14 +278,14 @@ export default function Admin() {
             key={tab}
             onClick={() => setActiveTab(tab)}
             className={`pb-5 text-[11px] font-black tracking-[0.2em] uppercase transition-all relative ${
-              activeTab === tab ? 'text-indigo-600 italic' : 'text-gray-300 hover:text-gray-500'
+              activeTab === tab ? 'text-google-blue italic' : 'text-gray-300 hover:text-gray-500'
             }`}
           >
             {tab}
             {activeTab === tab && (
               <motion.div 
                 layoutId="adminTab"
-                className="absolute bottom-0 left-0 right-0 h-1 bg-indigo-600 rounded-full" 
+                className="absolute bottom-0 left-0 right-0 h-1 bg-google-blue rounded-full" 
               />
             )}
           </button>
@@ -300,7 +300,7 @@ export default function Admin() {
           animate={{ opacity: 1, x: 0 }}
           exit={{ opacity: 0, x: -20 }}
           transition={snappySpring}
-          className="bg-white rounded-[40px] border border-gray-50 shadow-2xl shadow-indigo-100 overflow-hidden"
+          className="bg-white rounded-[40px] border border-gray-50 shadow-2xl shadow-blue-100 overflow-hidden"
         >
           
           {/* Search Header */}
@@ -312,7 +312,7 @@ export default function Admin() {
                 placeholder={`FILTER ${activeTab.toUpperCase()}...`}
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full pl-14 pr-6 py-4 bg-gray-50/50 border border-gray-100 rounded-2xl text-sm font-bold tracking-tight focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-200 outline-none transition-all uppercase placeholder:text-gray-300"
+                className="w-full pl-14 pr-6 py-4 bg-gray-50/50 border border-gray-100 rounded-2xl text-sm font-bold tracking-tight focus:ring-4 focus:ring-google-blue/10 focus:border-blue-200 outline-none transition-all uppercase placeholder:text-gray-300"
               />
             </div>
           </div>
@@ -320,7 +320,7 @@ export default function Admin() {
           <div className="overflow-x-auto sm:overflow-visible">
             {loading ? (
               <div className="py-32 text-center">
-                <RefreshCw className="animate-spin inline-block text-indigo-200" size={40} />
+                <RefreshCw className="animate-spin inline-block text-google-blue/60" size={40} />
               </div>
             ) : activeTab === 'listings' ? (
             <div className="min-w-full">
@@ -355,12 +355,12 @@ export default function Admin() {
                         <p className="text-xs text-gray-600">{l.sellerEmail}</p>
                       </td>
                       <td className="px-6 py-4">
-                        <span className="text-sm font-black text-indigo-600">₹{l.price.toLocaleString()}</span>
+                        <span className="text-sm font-black text-google-blue">₹{l.price.toLocaleString()}</span>
                       </td>
                       <td className="px-6 py-4">
                         <span className={`px-2 py-1 rounded-md text-[10px] font-black uppercase tracking-wider ${
-                          l.status === 'active' ? 'bg-green-100 text-green-700' : 
-                          l.status === 'sold' ? 'bg-blue-100 text-blue-700' : 'bg-gray-100 text-gray-700'
+                          l.status === 'active' ? 'bg-green-50 text-google-green border border-green-100' : 
+                          l.status === 'sold' ? 'bg-blue-50 text-google-blue border border-blue-100' : 'bg-gray-100 text-gray-700'
                         }`}>
                           {l.status}
                         </span>
@@ -372,14 +372,14 @@ export default function Admin() {
                         <div className="flex justify-end gap-2">
                           <button 
                             onClick={() => navigate(`/product/${l.id}`)}
-                            className="p-2 bg-indigo-50 text-indigo-600 hover:bg-indigo-100 rounded-lg transition-all active:scale-90"
+                            className="p-2 bg-blue-50 text-google-blue hover:bg-blue-100 rounded-lg transition-all active:scale-90"
                             title="View Listing"
                           >
                             <ExternalLink size={16} />
                           </button>
                           <button 
                             onClick={() => navigate(`/edit/${l.id}`)}
-                            className="p-2 bg-blue-50 text-blue-600 hover:bg-blue-100 rounded-lg transition-all active:scale-90"
+                            className="p-2 bg-blue-50 text-google-blue hover:bg-blue-100 rounded-lg transition-all active:scale-90 border border-blue-100"
                             title="Edit Listing"
                           >
                             <Edit3 size={16} />
@@ -387,7 +387,7 @@ export default function Admin() {
                           {l.status === 'active' && (
                             <button 
                               onClick={() => handleMarkSold(l.id)}
-                              className="p-2 bg-green-50 text-green-600 hover:bg-green-100 rounded-lg transition-all active:scale-90"
+                              className="p-2 bg-green-50 text-google-green hover:bg-green-100 rounded-lg transition-all active:scale-90 border border-green-100"
                               title="Mark as Sold"
                             >
                               <Tag size={16} />
@@ -395,7 +395,7 @@ export default function Admin() {
                           )}
                           <button 
                             onClick={() => handleDeleteListing(l.id, l.images)}
-                            className="p-2 bg-red-50 text-red-600 hover:bg-red-100 rounded-lg transition-all active:scale-90"
+                            className="p-2 bg-red-50 text-google-red hover:bg-red-100 rounded-lg transition-all active:scale-90 border border-red-100"
                             title="Delete Listing"
                           >
                             <Trash2 size={16} />
@@ -418,13 +418,13 @@ export default function Admin() {
                       <div className="flex-1 min-w-0">
                         <div className="flex justify-between items-start gap-2">
                           <h4 className="font-bold text-gray-900 text-sm truncate">{l.title}</h4>
-                          <span className="text-indigo-600 font-black text-sm shrink-0">₹{l.price.toLocaleString()}</span>
+                          <span className="text-google-blue font-black text-sm shrink-0">₹{l.price.toLocaleString()}</span>
                         </div>
                         <p className="text-[10px] text-gray-600 font-mono truncate uppercase mt-1">ID: {l.id}</p>
                         <div className="mt-2 flex items-center gap-2">
                            <span className={`px-2 py-0.5 rounded-md text-[8px] font-black uppercase tracking-wider ${
-                            l.status === 'active' ? 'bg-green-100 text-green-700' : 
-                            l.status === 'sold' ? 'bg-blue-100 text-blue-700' : 'bg-gray-100 text-gray-700'
+                            l.status === 'active' ? 'bg-green-50 text-google-green border border-green-100' : 
+                            l.status === 'sold' ? 'bg-blue-50 text-google-blue border border-blue-100' : 'bg-gray-100 text-gray-700'
                           }`}>
                             {l.status}
                           </span>
@@ -452,7 +452,7 @@ export default function Admin() {
                         </button>
                         <button 
                           onClick={() => handleDeleteListing(l.id, l.images)}
-                          className="p-2 bg-red-50 text-red-500 rounded-lg"
+                          className="p-2 bg-red-50 text-google-red rounded-lg"
                         >
                           <Trash2 size={14} />
                         </button>
@@ -479,7 +479,7 @@ export default function Admin() {
                     <tr key={u.id} className="hover:bg-gray-50/50 transition">
                       <td className="px-6 py-4 shadow-none">
                         <div className="flex items-center gap-3">
-                          <div className="w-8 h-8 rounded-full bg-indigo-100 text-indigo-600 flex items-center justify-center font-black text-xs">
+                          <div className="w-8 h-8 rounded-full bg-blue-100 text-google-blue flex items-center justify-center font-black text-xs">
                             {u.name?.[0]}
                           </div>
                           <p className="font-bold text-gray-900 text-sm">{u.name}</p>
@@ -492,7 +492,7 @@ export default function Admin() {
                       <td className="px-6 py-4 text-xs text-gray-600">
                         {formatSafeDate(u.createdAt, 'MMM yyyy')}
                       </td>
-                      <td className="px-6 py-4 text-sm font-black text-indigo-600">
+                      <td className="px-6 py-4 text-sm font-black text-google-blue">
                         {u.listingsCountToday}
                       </td>
                     </tr>
@@ -505,7 +505,7 @@ export default function Admin() {
                 {filteredUsers.map(u => (
                   <div key={u.id} className="p-4">
                     <div className="flex items-center gap-3 mb-2">
-                       <div className="w-8 h-8 rounded-full bg-indigo-100 text-indigo-600 flex items-center justify-center font-black text-xs">
+                       <div className="w-8 h-8 rounded-full bg-blue-100 text-google-blue flex items-center justify-center font-black text-xs">
                           {u.name?.[0]}
                         </div>
                         <div>
@@ -520,7 +520,7 @@ export default function Admin() {
                       </div>
                       <div className="text-right">
                         <p className="text-[10px] text-gray-600 font-black uppercase tracking-tighter">Total Listings</p>
-                        <p className="text-lg font-black text-indigo-600">{u.listingsCountToday}</p>
+                        <p className="text-lg font-black text-google-blue">{u.listingsCountToday}</p>
                       </div>
                     </div>
                   </div>
@@ -533,7 +533,7 @@ export default function Admin() {
     </AnimatePresence>
 
     {/* Warning Area */}
-      <div className="mt-8 p-6 bg-red-50 border border-red-100 rounded-3xl flex items-center gap-4 text-red-600">
+      <div className="mt-8 p-6 bg-red-50 border border-red-100 rounded-3xl flex items-center gap-4 text-google-red">
         <div className="p-3 bg-red-100 rounded-xl"><AlertTriangle size={24} /></div>
         <div>
           <p className="font-black text-sm uppercase tracking-widest">Admin Warning</p>

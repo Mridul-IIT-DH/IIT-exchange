@@ -40,9 +40,9 @@ export default function Contact() {
         initial={{ opacity: 0, scale: 0.95 }}
         animate={{ opacity: 1, scale: 1 }}
         transition={snappySpring}
-        className="bg-white rounded-[40px] shadow-2xl shadow-indigo-100 border border-gray-100 overflow-hidden relative"
+        className="bg-white rounded-[40px] shadow-2xl shadow-blue-100 border border-gray-100 overflow-hidden relative"
       >
-        <div className="bg-indigo-600 h-2 w-full"></div>
+        <div className="bg-google-blue h-2 w-full"></div>
         <div className="p-10 sm:p-16">
           <motion.div
              initial={{ opacity: 0, x: -20 }}
@@ -54,10 +54,10 @@ export default function Contact() {
           </motion.div>
           
           <div className="w-full flex flex-col items-center">
-            <div className="w-full bg-gray-50 rounded-[32px] overflow-hidden border border-gray-100 relative shadow-inner" style={{ height: '1050px' }}>
-              {!user && (
+            <div className="w-full bg-gray-50 rounded-[32px] overflow-hidden border border-gray-100 relative shadow-inner h-[1500px] sm:h-[1100px]">
+               {!user && (
                 <div className="absolute inset-0 bg-white/80 backdrop-blur-xl z-20 flex flex-col items-center justify-center p-12 text-center">
-                  <div className="p-5 bg-indigo-50 text-indigo-600 rounded-full mb-6">
+                  <div className="p-5 bg-blue-50 text-google-blue rounded-full mb-6">
                     <Mail size={32} />
                   </div>
                   <h3 className="text-2xl font-black text-black mb-4 uppercase italic tracking-tighter">Authorization Required</h3>
@@ -66,7 +66,7 @@ export default function Contact() {
                     whileHover={{ scale: 1.05 }}
                     whileTap={{ scale: 0.95 }}
                     onClick={() => signIn && signIn()}
-                    className="px-10 py-4 bg-indigo-600 text-white font-black uppercase tracking-widest text-xs rounded-2xl shadow-2xl shadow-indigo-100 italic"
+                    className="px-10 py-4 bg-black text-white font-black uppercase tracking-widest text-xs rounded-2xl shadow-2xl shadow-gray-200 italic"
                   >
                     Authenticate Now
                   </motion.button>

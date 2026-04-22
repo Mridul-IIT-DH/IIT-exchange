@@ -4,7 +4,7 @@ import { db } from '../lib/firebase';
 import { useAuth } from '../contexts/AuthContext';
 import { IndianRupee, Trash2, Tag, Clock, User as UserIcon, Heart, Phone, Edit2, Save, X as CloseIcon, ShieldCheck, Mail, Package, Copy, Eye } from 'lucide-react';
 import { formatDistanceToNow, format } from 'date-fns';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { cn, isValidPhoneNumber } from '../lib/utils';
 import { motion, AnimatePresence } from 'motion/react';
 import toast from 'react-hot-toast';
@@ -20,11 +20,12 @@ const snappySpring = {
 export default function Dashboard() {
   const { user, profile, refreshProfile } = useAuth();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const [products, setProducts] = useState<any[]>([]);
   const [wishlistProducts, setWishlistProducts] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [wishlistLoading, setWishlistLoading] = useState(false);
-  const [activeTab, setActiveTab] = useState<'listings' | 'wishlist' | 'profile'>('listings');
+  const [activeTab, setActiveTab] = useState<'listings' | 'wishlist' | 'profile'>((searchParams.get('tab') as any) || 'listings');
   const [listingsSubTab, setListingsSubTab] = useState<'active' | 'sold' | 'expired'>('active');
   const [listingToDelete, setListingToDelete] = useState<{id: string, images?: string[]} | null>(null);
 
@@ -57,12 +58,27 @@ export default function Dashboard() {
     setWishlistLoading(true);
     try {
       const productsData = [];
+      const validWishlistIds = [];
+      let needsCleanup = false;
+
       for (const prodId of profile.wishlist) {
         const prodDoc = await getDoc(doc(db, 'products', prodId));
         if (prodDoc.exists()) {
           productsData.push({ id: prodDoc.id, ...prodDoc.data() });
+          validWishlistIds.push(prodId);
+        } else {
+          needsCleanup = true;
         }
       }
+
+      // If some items were deleted from the products collection, clean up user's wishlist
+      if (needsCleanup && user) {
+        await updateDoc(doc(db, 'users', user.uid), {
+          wishlist: validWishlistIds
+        });
+        refreshProfile(); // Sync global state
+      }
+
       setWishlistProducts(productsData.sort((a, b) => b.createdAt - a.createdAt));
     } catch (error) {
       console.error(error);
@@ -71,6 +87,15 @@ export default function Dashboard() {
       setWishlistLoading(false);
     }
   };
+
+  useEffect(() => {
+    const tab = searchParams.get('tab');
+    if (tab && (tab === 'listings' || tab === 'wishlist' || tab === 'profile')) {
+      setActiveTab(tab);
+    } else if (!tab) {
+      setActiveTab('listings');
+    }
+  }, [searchParams]);
 
   useEffect(() => {
     if (!user) navigate('/');
@@ -161,6 +186,15 @@ export default function Dashboard() {
         }
       }
       await deleteDoc(doc(db, 'products', id));
+      
+      // Cleanup local wishlist if needed
+      if (user && profile?.wishlist?.includes(id)) {
+        await updateDoc(doc(db, 'users', user.uid), {
+          wishlist: profile.wishlist.filter((w: string) => w !== id)
+        });
+        await refreshProfile();
+      }
+
       toast.success('Listing deleted');
       fetchMyListings();
     } catch (error: any) {
@@ -175,7 +209,7 @@ export default function Dashboard() {
           initial={{ scale: 0.8, opacity: 0 }}
           animate={{ scale: 1, opacity: 1 }}
           transition={snappySpring}
-          className="animate-spin rounded-full h-10 w-10 border-b-2 border-indigo-600"
+          className="animate-spin rounded-full h-10 w-10 border-b-2 border-google-blue"
         ></motion.div>
       </div>
     );
@@ -205,7 +239,7 @@ export default function Dashboard() {
             onClick={() => setActiveTab(tab)}
             className={cn(
               "relative flex-1 flex items-center justify-center gap-2 px-6 py-3 font-black text-[11px] uppercase tracking-widest transition-all duration-300 rounded-xl",
-              activeTab === tab ? "bg-white text-indigo-700 shadow-xl" : "text-gray-600 hover:text-gray-900 hover:bg-white/50"
+              activeTab === tab ? "bg-white text-google-blue shadow-xl" : "text-gray-600 hover:text-gray-900 hover:bg-white/50"
             )}
           >
             {tab === 'listings' && <Package size={16} />}
@@ -246,7 +280,7 @@ export default function Dashboard() {
                       className={cn(
                         "px-6 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all",
                         listingsSubTab === subTab
-                          ? "bg-indigo-600 text-white shadow-xl shadow-indigo-100"
+                          ? "bg-google-blue text-white shadow-xl shadow-blue-100"
                           : "bg-white border border-gray-200 text-gray-500 hover:bg-gray-50"
                       )}
                     >
@@ -271,7 +305,7 @@ export default function Dashboard() {
                       </div>
                       <h3 className="text-xl font-black text-black uppercase tracking-tight">Empty Inventory</h3>
                       <p className="text-gray-600 font-bold text-sm mt-1">No {listingsSubTab} listings found in your listing bank.</p>
-                      <Link to="/sell" className="text-indigo-600 text-[11px] font-black uppercase tracking-widest mt-6 inline-block hover:underline">Start Listing Now &rarr;</Link>
+                      <Link to="/sell" className="text-google-blue text-[11px] font-black uppercase tracking-widest mt-6 inline-block hover:underline">Start Listing Now &rarr;</Link>
                     </motion.div>
                   ) : (
                     myFilteredProducts.map(product => (
@@ -280,7 +314,7 @@ export default function Dashboard() {
                         initial={{ opacity: 0, x: -10 }}
                         animate={{ opacity: 1, x: 0 }}
                         key={product.id} 
-                        className="bg-white p-5 rounded-[32px] border border-gray-100 shadow-sm hover:shadow-xl hover:shadow-indigo-50 transition-all group flex flex-col sm:flex-row gap-6 items-start sm:items-center"
+                        className="bg-white p-5 rounded-[32px] border border-gray-100 shadow-sm hover:shadow-xl hover:shadow-blue-50 transition-all group flex flex-col sm:flex-row gap-6 items-start sm:items-center"
                       >
                         <div className="aspect-square w-full sm:w-28 bg-gray-50 rounded-3xl overflow-hidden shrink-0 border border-gray-100 relative group-hover:scale-105 transition-transform duration-500">
                           {product.images?.length > 0 ? (
@@ -293,16 +327,16 @@ export default function Dashboard() {
                         </div>
 
                         <div className="flex-1 min-w-0">
-                          <Link to={`/product/${product.id}`} className="text-xl font-black text-gray-900 hover:text-indigo-600 transition truncate block tracking-tight">
+                          <Link to={`/product/${product.id}`} className="text-xl font-black text-gray-900 hover:text-google-blue transition truncate block tracking-tight">
                             {product.title}
                           </Link>
                           <div className="mt-2 flex flex-wrap gap-x-6 gap-y-2 text-[10px] text-gray-600 uppercase font-black tracking-widest">
-                            <span className="text-indigo-600 flex items-center bg-indigo-50 px-3 py-1 rounded-full">
+                            <span className="text-google-blue flex items-center bg-blue-50 px-3 py-1 rounded-full">
                               {product.isPriceNegotiable && product.price === 0 ? "DISCUSS" : <><IndianRupee size={12} className="mr-0.5"/> {product.price.toLocaleString()}</>}
                             </span>
                             <span className="flex items-center gap-1.5"><Clock size={12} /> {format(product.createdAt, 'MMM d, yyyy')}</span>
                             {product.contactClicks > 0 && (
-                              <span className="text-blue-500 flex items-center gap-1.5" title="Number of people who revealed your contact info">
+                              <span className="text-google-blue flex items-center gap-1.5" title="Number of people who revealed your contact info">
                                 <Eye size={12} /> {product.contactClicks} REVEALS
                               </span>
                             )}
@@ -317,7 +351,7 @@ export default function Dashboard() {
                         <div className="flex items-center gap-3 w-full sm:w-auto">
                           <Link 
                             to={`/edit/${product.id}`}
-                            className="flex-1 sm:flex-none p-4 bg-blue-50 text-blue-600 hover:bg-blue-100 rounded-2xl transition-all active:scale-90"
+                            className="flex-1 sm:flex-none p-4 bg-blue-50 text-google-blue hover:bg-blue-100 rounded-2xl transition-all active:scale-90 border border-blue-50"
                             title="Edit"
                           >
                             <Edit2 size={20} strokeWidth={2.5} />
@@ -326,7 +360,7 @@ export default function Dashboard() {
                           {listingsSubTab === 'active' && (
                             <button 
                               onClick={() => handleStatusChange(product.id, 'sold')}
-                              className="flex-1 sm:flex-none p-4 bg-green-50 text-green-600 hover:bg-green-100 rounded-2xl transition-all active:scale-90"
+                              className="flex-1 sm:flex-none p-4 bg-green-50 text-google-green hover:bg-green-100 rounded-2xl transition-all active:scale-90 border border-green-50"
                               title="Mark as Sold"
                             >
                               <Tag size={20} strokeWidth={2.5} />
@@ -336,7 +370,7 @@ export default function Dashboard() {
                           {listingsSubTab === 'expired' && (
                             <button 
                               onClick={() => handleExtend(product.id)}
-                              className="flex-1 sm:flex-none p-4 bg-indigo-50 text-indigo-600 hover:bg-indigo-100 rounded-2xl transition-all active:scale-90"
+                              className="flex-1 sm:flex-none p-4 bg-blue-50 text-google-blue hover:bg-blue-100 rounded-2xl transition-all active:scale-90"
                               title="Extend Listing"
                             >
                               <Clock size={20} strokeWidth={2.5} />
@@ -345,7 +379,7 @@ export default function Dashboard() {
 
                           <button 
                             onClick={() => setListingToDelete({ id: product.id, images: product.images })}
-                            className="flex-1 sm:flex-none p-4 bg-red-50 text-red-600 hover:bg-red-100 rounded-2xl transition-all active:scale-90"
+                            className="flex-1 sm:flex-none p-4 bg-red-50 text-google-red hover:bg-red-100 rounded-2xl transition-all active:scale-90 border border-red-100"
                             title="Delete"
                           >
                             <Trash2 size={20} strokeWidth={2.5} />
@@ -365,7 +399,7 @@ export default function Dashboard() {
                      <motion.div 
                        animate={{ rotate: 360 }}
                        transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
-                       className="rounded-full h-10 w-10 border-b-2 border-indigo-600"
+                       className="rounded-full h-10 w-10 border-b-2 border-google-blue"
                      ></motion.div>
                    </div>
                 ) : wishlistProducts.length === 0 ? (
@@ -379,7 +413,7 @@ export default function Dashboard() {
                     </div>
                     <h3 className="text-xl font-black text-black uppercase tracking-tight">Watchlist Empty</h3>
                     <p className="text-gray-600 font-bold text-sm mt-1">Found nothing interesting yet? Start exploring.</p>
-                    <Link to="/" className="text-indigo-600 text-[11px] font-black uppercase tracking-widest mt-6 inline-block hover:underline">Listings &rarr;</Link>
+                    <Link to="/" className="text-google-blue text-[11px] font-black uppercase tracking-widest mt-6 inline-block hover:underline">Listings &rarr;</Link>
                   </motion.div>
                 ) : (
                   <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8">
@@ -390,7 +424,7 @@ export default function Dashboard() {
                       >
                         <Link 
                           to={`/product/${product.id}`}
-                          className="bg-white rounded-[40px] border border-gray-100 overflow-hidden shadow-sm hover:shadow-2xl hover:shadow-indigo-100 transition-all group flex flex-col h-full"
+                          className="bg-white rounded-[40px] border border-gray-100 overflow-hidden shadow-sm hover:shadow-2xl hover:shadow-blue-100 transition-all group flex flex-col h-full"
                         >
                           <div className="aspect-[5/4] bg-gray-50 relative overflow-hidden">
                             {product.images?.length > 0 ? (
@@ -405,18 +439,24 @@ export default function Dashboard() {
                                 <Package size={40} />
                               </div>
                             )}
-                            <div className="absolute top-4 right-4">
+                            <div className="absolute top-4 right-4 flex flex-col gap-2">
                               <span className={cn(
                                 "px-4 py-1.5 text-[9px] font-black uppercase tracking-widest rounded-full shadow-lg backdrop-blur-md border",
-                                product.status === 'active' ? 'bg-green-500/80 border-green-400 text-white' : 'bg-gray-500/80 border-gray-400 text-white'
+                                product.status === 'active' ? 'bg-google-green border-white/40 text-white' : 
+                                product.status === 'sold' ? 'bg-google-blue border-white/40 text-white' : 'bg-gray-500/80 border-white/40 text-white'
                               )}>
                                 {product.status}
                               </span>
+                              {product.isPriceNegotiable && (
+                                <span className="bg-google-green text-white text-[8px] font-black px-3 py-1 rounded-full uppercase tracking-widest w-fit shadow-lg shadow-green-100 border border-white/20">
+                                  Negotiable
+                                </span>
+                              )}
                             </div>
                           </div>
                           <div className="p-8">
-                            <h3 className="text-lg font-black text-gray-900 group-hover:text-indigo-600 transition line-clamp-1 italic tracking-tight">{product.title}</h3>
-                            <p className="mt-3 text-xl font-black text-indigo-700 flex items-center tracking-tighter">
+                            <h3 className="text-lg font-black text-gray-900 group-hover:text-google-blue transition line-clamp-1 italic tracking-tight">{product.title}</h3>
+                            <p className="mt-3 text-xl font-black text-google-blue flex items-center tracking-tighter">
                               {product.isPriceNegotiable && product.price === 0 ? "DISCUSS" : <><IndianRupee size={18} strokeWidth={3}/> {product.price.toLocaleString()}</>}
                             </p>
                           </div>
@@ -434,11 +474,11 @@ export default function Dashboard() {
                   initial={{ opacity: 0, scale: 0.95 }}
                   animate={{ opacity: 1, scale: 1 }}
                   transition={snappySpring}
-                  className="bg-white rounded-[40px] border border-gray-100 shadow-2xl shadow-indigo-100 overflow-hidden"
+                  className="bg-white rounded-[40px] border border-gray-100 shadow-2xl shadow-blue-100 overflow-hidden"
                 >
-                  <div className="bg-indigo-600 p-12 sm:p-16 text-white text-center relative overflow-hidden">
+                  <div className="bg-google-blue p-12 sm:p-16 text-white text-center relative overflow-hidden">
                     <div className="absolute top-0 right-0 w-48 h-48 bg-white/10 rounded-full translate-x-24 -translate-y-24 blur-3xl opacity-50"></div>
-                    <div className="absolute bottom-0 left-0 w-40 h-40 bg-indigo-400/30 rounded-full -translate-x-20 translate-y-20 blur-2xl opacity-40"></div>
+                    <div className="absolute bottom-0 left-0 w-40 h-40 bg-blue-400/30 rounded-full -translate-x-20 translate-y-20 blur-2xl opacity-40"></div>
                     
                     <div className="relative">
                       <motion.div 
@@ -448,7 +488,7 @@ export default function Dashboard() {
                         <UserIcon size={56} strokeWidth={2.5} />
                       </motion.div>
                       <h3 className="text-3xl font-black tracking-tightest mb-2 uppercase italic">{profile?.name}</h3>
-                      <p className="text-indigo-100/70 text-sm font-bold tracking-wide">{profile?.email}</p>
+                      <p className="text-blue-50/70 text-sm font-bold tracking-wide">{profile?.email}</p>
                       <div className="mt-8 inline-flex items-center gap-3 bg-white/10 backdrop-blur-3xl px-6 py-2 rounded-full text-[10px] font-black uppercase tracking-[0.2em] border border-white/20">
                         <ShieldCheck size={16} /> MEMBER ID: #{user?.uid.slice(-6).toUpperCase()}
                       </div>
@@ -463,7 +503,7 @@ export default function Dashboard() {
                           <motion.button 
                             whileTap={{ scale: 0.9 }}
                             onClick={() => setIsEditingProfile(true)}
-                            className="text-indigo-600 hover:text-indigo-700 text-[11px] font-black flex items-center gap-2 uppercase tracking-widest"
+                            className="text-google-blue hover:opacity-80 text-[11px] font-black flex items-center gap-2 uppercase tracking-widest transition-opacity"
                           >
                             <Edit2 size={14} /> EDIT
                           </motion.button>
@@ -471,8 +511,8 @@ export default function Dashboard() {
                       </div>
 
                       <div className="space-y-6">
-                        <div className="flex items-center gap-4 sm:gap-6 bg-gray-50/50 p-4 sm:p-6 rounded-3xl border border-gray-100 group hover:border-indigo-100 transition-all min-w-0">
-                          <div className="p-3 sm:p-4 bg-white text-indigo-600 rounded-2xl shadow-xl border border-gray-100 group-hover:scale-110 transition-transform shrink-0">
+                        <div className="flex items-center gap-4 sm:gap-6 bg-gray-50/50 p-4 sm:p-6 rounded-3xl border border-gray-100 group hover:border-blue-100 transition-all min-w-0">
+                          <div className="p-3 sm:p-4 bg-white text-google-blue rounded-2xl shadow-xl border border-gray-100 group-hover:scale-110 transition-transform shrink-0">
                             <Phone className="w-5 h-5 sm:w-6 sm:h-6" strokeWidth={2.5} />
                           </div>
                           <div className="flex-1 min-w-0">
@@ -483,14 +523,14 @@ export default function Dashboard() {
                                   type="tel"
                                   value={tempPhone}
                                   onChange={(e) => setTempPhone(e.target.value)}
-                                  className="block w-full px-4 py-2 bg-white border border-indigo-200 rounded-xl focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 outline-none transition text-sm font-black text-black"
+                                  className="block w-full px-4 py-2 bg-white border border-blue-200 rounded-xl focus:ring-4 focus:ring-google-blue/10 focus:border-google-blue outline-none transition text-sm font-black text-black"
                                   placeholder="10-digit primary mobile"
                                   autoFocus
                                 />
                                 <motion.button 
                                   whileTap={{ scale: 0.9 }}
                                   onClick={handleUpdateProfile}
-                                  className="p-3 bg-indigo-600 text-white rounded-xl shadow-xl shadow-indigo-100 shrink-0"
+                                  className="p-3 bg-google-blue text-white rounded-xl shadow-xl shadow-blue-100 shrink-0"
                                 >
                                   <Save size={20} />
                                 </motion.button>
@@ -513,7 +553,7 @@ export default function Dashboard() {
                                     navigator.clipboard.writeText(`+91 ${profile?.phone}`);
                                     toast.success('Phone copied to clipboard');
                                   }}
-                                  className="text-gray-400 hover:text-indigo-600 p-1 shrink-0 transition"
+                                  className="text-gray-400 hover:text-google-blue p-1 shrink-0 transition"
                                 >
                                   <Copy size={14} />
                                 </button>
@@ -523,7 +563,7 @@ export default function Dashboard() {
                         </div>
 
                         <div className="flex items-center gap-4 sm:gap-6 bg-gray-50/50 p-4 sm:p-6 rounded-3xl border border-gray-100 group min-w-0">
-                           <div className="p-3 sm:p-4 bg-white text-indigo-600 rounded-2xl shadow-xl border border-gray-100 shrink-0 group-hover:scale-110 transition-transform">
+                           <div className="p-3 sm:p-4 bg-white text-google-blue rounded-2xl shadow-xl border border-gray-100 shrink-0 group-hover:scale-110 transition-transform">
                             <Mail className="w-5 h-5 sm:w-6 sm:h-6" strokeWidth={2.5} />
                           </div>
                           <div className="flex-1 min-w-0">
@@ -537,7 +577,7 @@ export default function Dashboard() {
                                     toast.success('Email copied to clipboard');
                                   }
                                 }}
-                                className="text-gray-400 hover:text-indigo-600 p-1 shrink-0 transition"
+                                className="text-gray-400 hover:text-google-blue p-1 shrink-0 transition"
                               >
                                 <Copy size={14} />
                               </button>
@@ -548,7 +588,7 @@ export default function Dashboard() {
                     </div>
 
                     <div className="grid grid-cols-2 gap-4 sm:gap-6">
-                      <div className="bg-indigo-600 p-5 sm:p-8 rounded-[30px] sm:rounded-[40px] text-white shadow-2xl shadow-indigo-200 relative overflow-hidden group">
+                      <div className="bg-google-blue p-5 sm:p-8 rounded-[30px] sm:rounded-[40px] text-white shadow-2xl shadow-blue-200 relative overflow-hidden group">
                         <Package className="absolute -right-6 -bottom-6 size-24 opacity-10 group-hover:scale-110 transition-transform duration-700" />
                         <p className="text-[9px] sm:text-[11px] font-black uppercase tracking-wider sm:tracking-widest opacity-70 mb-1 sm:mb-2 line-clamp-2">Total Listings</p>
                         <p className="text-4xl sm:text-5xl font-black italic tracking-tighter">{products.length}</p>
@@ -586,7 +626,7 @@ export default function Dashboard() {
               className="relative bg-white rounded-[40px] shadow-3xl max-w-md w-full p-12 text-center"
             >
               <div className="mx-auto flex items-center justify-center h-24 w-24 rounded-[32px] bg-red-50 mb-8 border-4 border-white shadow-xl">
-                <Trash2 size={40} className="text-red-500" strokeWidth={2.5} />
+                <Trash2 size={40} className="text-google-red" strokeWidth={2.5} />
               </div>
               <h3 className="text-3xl font-black text-black mb-4 uppercase italic tracking-tightest">Archive Listing?</h3>
               <p className="text-gray-600 font-bold text-sm mb-10 leading-relaxed">

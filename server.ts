@@ -81,10 +81,10 @@ async function startServer() {
     message: { error: 'Too many requests from this IP, please try again after 15 minutes' }
   });
   
-  // Stricter limiter for image uploads
+  // Stricter limiter for image uploads (relaxed for campus NAT)
   const uploadLimiter = rateLimit({
     windowMs: 60 * 60 * 1000, // 1 hour
-    max: 100, // strictly up to 100 images per hour per IP
+    max: 300, // increased from 100 to support campus/shared IP environments
     standardHeaders: true,
     legacyHeaders: false,
     message: { error: 'Upload limit exceeded, please try again in an hour.' }
@@ -103,33 +103,47 @@ async function startServer() {
 
   // API Route to upload image to Cloudinary (secure signed upload via server)
   app.post("/api/images/upload", uploadLimiter, requireAuth, upload.single("file"), async (req, res) => {
+    console.log(`[Upload] Request received from ${ (req as any).user.email }`);
     try {
       if (!req.file) {
+        console.warn("[Upload] No file in request");
         return res.status(400).json({ error: "No image file provided" });
       }
 
+      console.log(`[Upload] File size: ${req.file.size} bytes`);
+
       if (!process.env.CLOUDINARY_API_KEY || !process.env.CLOUDINARY_API_SECRET) {
+        console.error("[Upload] Missing Cloudinary keys");
         throw new Error("Missing Cloudinary API keys on server");
       }
 
-      const uploadStream = cloudinary.uploader.upload_stream(
-        { 
-          folder: "iit-exchange",
-          transformation: [
-            { width: 1200, height: 900, crop: "limit" },
-            { quality: "auto" }
-          ]
-        },
-        (error, result) => {
-          if (error) {
-            console.error("Cloudinary upload stream error:", error);
-            return res.status(500).json({ error: "Failed to upload to Cloudinary" });
-          }
-          res.json({ secure_url: result?.secure_url });
-        }
-      );
+      // Use a Promise to handle the upload_stream properly
+      const uploadToCloudinary = (buffer: Buffer) => {
+        return new Promise((resolve, reject) => {
+          const uploadStream = cloudinary.uploader.upload_stream(
+            { 
+              folder: "iit-exchange",
+              transformation: [
+                { width: 1200, height: 900, crop: "limit" },
+                { quality: "auto" }
+              ]
+            },
+            (error, result) => {
+              if (error) {
+                console.error("[Upload] Cloudinary error:", error);
+                reject(error);
+              } else {
+                console.log("[Upload] Success:", result?.secure_url);
+                resolve(result);
+              }
+            }
+          );
+          Readable.from(buffer).pipe(uploadStream);
+        });
+      };
 
-      Readable.from(req.file.buffer).pipe(uploadStream);
+      const result: any = await uploadToCloudinary(req.file.buffer);
+      res.json({ secure_url: result?.secure_url });
     } catch (error: any) {
       console.error("ADMIN-API [Upload Error]:", error);
       res.status(500).json({ 

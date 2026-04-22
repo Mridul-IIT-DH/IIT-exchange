@@ -3,6 +3,11 @@
 @theme {
   --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
   --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, monospace;
+  --color-google-blue: #0061ff;
+  --color-google-red: #ff3b30;
+  --color-google-yellow: #ffcc00;
+  --color-google-green: #34c759;
+  --color-lavender: #7c69ef;
 }
 
 @layer base {
@@ -12,10 +17,14 @@
   }
 
   body {
-    @apply antialiased text-gray-900 bg-gray-50;
+    @apply antialiased text-gray-900 bg-white;
     text-rendering: optimizeLegibility;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
+  }
+
+  ::selection {
+    @apply bg-google-blue/10 text-google-blue;
   }
 
   button, 
