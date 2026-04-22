@@ -5,6 +5,7 @@ import { db } from '../lib/firebase';
 import { useAuth } from '../contexts/AuthContext';
 import { formatDistanceToNow } from 'date-fns';
 import { PackageSearch, IndianRupee, Search, Heart } from 'lucide-react';
+import { motion, AnimatePresence } from 'motion/react';
 import toast from 'react-hot-toast';
 
 export default function Home() {
@@ -143,76 +144,96 @@ export default function Home() {
             </p>
           </div>
         ) : (
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
+          <motion.div 
+            initial="hidden"
+            animate="show"
+            variants={{
+              hidden: { opacity: 0 },
+              show: {
+                opacity: 1,
+                transition: {
+                  staggerChildren: 0.05
+                }
+              }
+            }}
+            className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6"
+          >
             {filteredProducts.map((product) => (
-              <Link 
-                to={`/product/${product.id}`} 
+              <motion.div
                 key={product.id}
-                className="group relative bg-white rounded-xl shadow-sm hover:shadow-md border border-gray-200 overflow-hidden transition duration-200 flex flex-col"
+                variants={{
+                  hidden: { opacity: 0, y: 20 },
+                  show: { opacity: 1, y: 0 }
+                }}
               >
-                <div className="aspect-[4/3] bg-gray-100 relative overflow-hidden">
-                  {product.images && product.images.length > 0 ? (
-                    <img 
-                      src={product.images[0]} 
-                      alt={product.title} 
-                      className="object-cover w-full h-full group-hover:scale-105 transition duration-300"
-                      referrerPolicy="no-referrer"
-                    />
-                  ) : (
-                    <div className="flex items-center justify-center w-full h-full text-gray-400">
-                      No Image
-                    </div>
-                  )}
-                  {/* Tags */}
-                  <div className="absolute top-3 left-3 flex flex-col gap-2 z-10">
-                    {Date.now() - product.createdAt < 24 * 60 * 60 * 1000 && (
-                      <span className="bg-indigo-600 text-white text-[10px] uppercase font-bold px-2.5 py-1 rounded-full shadow-lg backdrop-blur-sm tracking-wider">
-                        New
-                      </span>
-                    )}
-                  </div>
-
-                  {/* Wishlist Toggle */}
-                  <button
-                    onClick={(e) => toggleWishlist(e, product.id)}
-                    disabled={wishlistLoadingId === product.id}
-                    className={`absolute top-2 right-2 p-2 rounded-full backdrop-blur-md transition-all z-10 shadow-sm ${
-                      profile?.wishlist?.includes(product.id)
-                        ? 'bg-red-500 text-white'
-                        : 'bg-black/20 text-white hover:bg-black/40'
-                    }`}
-                  >
-                    <Heart size={16} fill={profile?.wishlist?.includes(product.id) ? "currentColor" : "none"} />
-                  </button>
-                </div>
-                <div className="p-4 flex-1 flex flex-col">
-                  <h3 className="text-lg font-medium text-gray-900 line-clamp-1 group-hover:text-indigo-600 transition">
-                    {product.title}
-                  </h3>
-                  <div className="mt-1 flex items-baseline gap-2">
-                    {product.isPriceNegotiable && product.price === 0 ? (
-                      <span className="text-lg font-bold text-gray-900">Discuss Price</span>
+                <Link 
+                  to={`/product/${product.id}`} 
+                  className="group relative bg-white rounded-xl shadow-sm hover:shadow-md border border-gray-200 overflow-hidden transition duration-200 flex flex-col h-full"
+                >
+                  <div className="aspect-[4/3] bg-gray-100 relative overflow-hidden">
+                    {product.images && product.images.length > 0 ? (
+                      <img 
+                        src={product.images[0]} 
+                        alt={product.title} 
+                        className="object-cover w-full h-full group-hover:scale-105 transition duration-300"
+                        referrerPolicy="no-referrer"
+                      />
                     ) : (
-                      <>
-                        <span className="text-xl font-bold text-gray-900 flex items-center">
-                          <IndianRupee size={18} /> {product.price.toLocaleString()}
-                        </span>
-                        {product.isPriceNegotiable && (
-                           <span className="text-[10px] uppercase font-bold text-indigo-600 bg-indigo-50 border border-indigo-100 px-2 py-0.5 rounded-full">
-                             Negotiable
-                           </span>
-                        )}
-                      </>
+                      <div className="flex items-center justify-center w-full h-full text-gray-400">
+                        No Image
+                      </div>
                     )}
+                    {/* Tags */}
+                    <div className="absolute top-3 left-3 flex flex-col gap-2 z-10">
+                      {Date.now() - product.createdAt < 24 * 60 * 60 * 1000 && (
+                        <span className="bg-indigo-600 text-white text-[10px] uppercase font-bold px-2.5 py-1 rounded-full shadow-lg backdrop-blur-sm tracking-wider">
+                          New
+                        </span>
+                      )}
+                    </div>
+
+                    {/* Wishlist Toggle */}
+                    <button
+                      onClick={(e) => toggleWishlist(e, product.id)}
+                      disabled={wishlistLoadingId === product.id}
+                      className={`absolute top-2 right-2 p-2 rounded-full backdrop-blur-md transition-all z-10 shadow-sm ${
+                        profile?.wishlist?.includes(product.id)
+                          ? 'bg-red-500 text-white'
+                          : 'bg-black/20 text-white hover:bg-black/40'
+                      }`}
+                    >
+                      <Heart size={16} fill={profile?.wishlist?.includes(product.id) ? "currentColor" : "none"} />
+                    </button>
                   </div>
-                  <div className="mt-auto pt-4 flex justify-between items-center text-xs text-gray-500">
-                    <span className="line-clamp-1">{product.sellerName}</span>
-                    <span>{formatDistanceToNow(product.createdAt, { addSuffix: true })}</span>
+                  <div className="p-4 flex-1 flex flex-col">
+                    <h3 className="text-lg font-medium text-gray-900 line-clamp-1 group-hover:text-indigo-600 transition">
+                      {product.title}
+                    </h3>
+                    <div className="mt-1 flex items-baseline gap-2">
+                      {product.isPriceNegotiable && product.price === 0 ? (
+                        <span className="text-lg font-bold text-gray-900">Discuss Price</span>
+                      ) : (
+                        <>
+                          <span className="text-xl font-bold text-gray-900 flex items-center">
+                            <IndianRupee size={18} /> {product.price.toLocaleString()}
+                          </span>
+                          {product.isPriceNegotiable && (
+                             <span className="text-[10px] uppercase font-bold text-indigo-600 bg-indigo-50 border border-indigo-100 px-2 py-0.5 rounded-full">
+                               Negotiable
+                             </span>
+                          )}
+                        </>
+                      )}
+                    </div>
+                    <div className="mt-auto pt-4 flex justify-between items-center text-xs text-gray-500">
+                      <span className="line-clamp-1">{product.sellerName}</span>
+                      <span>{formatDistanceToNow(product.createdAt, { addSuffix: true })}</span>
+                    </div>
                   </div>
-                </div>
-              </Link>
+                </Link>
+              </motion.div>
             ))}
-          </div>
+          </motion.div>
         )}
       </div>
     </div>

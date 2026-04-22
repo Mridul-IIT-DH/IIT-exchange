@@ -353,6 +353,7 @@ export default function Sell() {
               min="0"
               value={price}
               onChange={(e) => setPrice(e.target.value)}
+              onWheel={(e) => (e.target as HTMLInputElement).blur()}
               placeholder="Leave 0 or empty for 'Discuss Price'"
               className="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-lg focus:ring-indigo-500 focus:border-indigo-500 shadow-sm"
             />
