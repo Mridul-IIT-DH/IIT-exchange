@@ -166,10 +166,10 @@ export default function Layout() {
               ) : (
                 <button
                   onClick={handleLogin}
-                  className="flex items-center gap-2 px-6 py-2.5 bg-google-blue text-white rounded-xl font-bold text-sm hover:bg-blue-600 transition-all hover:shadow-lg hover:shadow-blue-200 active:scale-95 shadow-sm"
+                  className="flex items-center gap-2 px-6 py-2.5 bg-google-blue text-white rounded-xl font-bold text-[11px] hover:bg-blue-600 transition-all hover:shadow-lg hover:shadow-blue-200 active:scale-95 shadow-sm uppercase tracking-widest"
                 >
                   <UserCircle size={20} />
-                  LOGIN
+                  LOGIN WITH @iitdh.ac.in
                 </button>
               )}
             </div>
@@ -253,7 +253,7 @@ export default function Layout() {
                 ) : (
                   <button
                     onClick={() => { setMobileMenuOpen(false); handleLogin(); }}
-                    className="w-full text-left px-4 py-4 text-sm font-black text-google-blue bg-blue-50 rounded-xl flex items-center justify-center gap-3 transition-all active:scale-95"
+                    className="w-full px-4 py-4 text-[11px] font-black text-white bg-google-blue rounded-xl flex items-center justify-center gap-3 transition-all active:scale-95 shadow-lg shadow-blue-100 uppercase tracking-widest"
                   >
                     <UserCircle size={18} /> LOGIN WITH @iitdh.ac.in
                   </button>
@@ -401,8 +401,8 @@ export default function Layout() {
       </AnimatePresence>
 
       {/* Footer */}
-      <footer className="bg-white border-t border-gray-100 mt-auto hidden md:block">
-        <div className="max-w-7xl mx-auto py-16 px-4 sm:px-6 lg:px-8">
+      <footer className="bg-white border-t border-gray-100 mt-auto">
+        <div className="max-w-7xl mx-auto pt-16 pb-32 md:pb-16 px-4 sm:px-6 lg:px-8">
           <div className="flex flex-col md:flex-row justify-between items-start gap-12">
             <div className="flex flex-col items-start gap-4">
               <span className="text-3xl font-black text-black tracking-tightest uppercase italic">IIT <span className="font-light text-black not-italic">Exchange</span></span>
