@@ -11,7 +11,8 @@ service cloud.firestore {
     function isAdmin() {
       return isSignedIn() && (
         request.auth.uid == '04KEOwkoiNMRjPN5fPeSXUkv3Kg2' ||
-        request.auth.token.email == 'cs24mt002@iitdh.ac.in'
+        request.auth.token.email == 'cs24mt002@iitdh.ac.in' ||
+        exists(/databases/$(database)/documents/admins/$(request.auth.uid))
       );
     }
 
@@ -34,23 +35,38 @@ service cloud.firestore {
     // ---------------------------------------------------------
     // 2. USER DIRECTORY (/users)
     // ---------------------------------------------------------
-    match /users/{userId} {
-      // List: Admin oversight
-      allow list: if isAdmin();
-      
-      // Get: Owner or Administrator
-      allow get: if isSignedIn() && (isAdmin() || userId == request.auth.uid);
-      
-      // Create: Strictly bound student identity
-      allow create: if isIITStudent() && userId == request.auth.uid && isValidId(userId) &&
-                   incoming().phone is string && incoming().phone.size() <= 20;
+    function isValidUser(data) {
+      return data.uid is string && data.uid.size() <= 128 &&
+             data.name is string && data.name.size() <= 100 &&
+             data.email is string && data.email.matches('.+@iitdh\\.ac\\.in$') &&
+             data.phone is string && data.phone.size() <= 20 &&
+             data.createdAt is number &&
+             data.listingsCountToday is number &&
+             data.wishlist is list && data.wishlist.size() <= 200;
+    }
 
-      // Update: Owner (profile sync) or Admin (moderation)
+    match /users/{userId} {
+      // List/Get: Admin oversight or Owner
+      allow list: if isAdmin();
+      allow get: if isAdmin() || (isSignedIn() && userId == request.auth.uid);
+      
+      // Create: Strictly bound student identity with schema locked to prevent privilege escalation
+      allow create: if isIITStudent() && 
+                    userId == request.auth.uid && 
+                    isValidId(userId) &&
+                    incoming().keys().hasOnly(['uid', 'name', 'email', 'phone', 'createdAt', 'listingsCountToday', 'wishlist']) &&
+                    isValidUser(incoming()) &&
+                    incoming().uid == request.auth.uid &&
+                    incoming().email == request.auth.token.email;
+
+      // Update: Owner (profile/wishlist sync) or Admin. Prevent role injection.
       allow update: if isAdmin() || (
         isIITStudent() && 
         userId == request.auth.uid && 
+        incoming().diff(existing()).affectedKeys().hasOnly(['phone', 'wishlist', 'listingsCountToday']) &&
         incoming().phone is string && incoming().phone.size() <= 20 &&
-        incoming().uid == userId
+        incoming().wishlist is list && incoming().wishlist.size() <= 200 &&
+        incoming().listingsCountToday is number && incoming().listingsCountToday <= 100
       );
       
       allow delete: if isAdmin();
@@ -59,26 +75,55 @@ service cloud.firestore {
     // ---------------------------------------------------------
     // 3. MARKETPLACE INVENTORY (/products)
     // ---------------------------------------------------------
+    function isValidProduct(data) {
+      return data.id is string && data.id.size() <= 128 &&
+             data.title is string && data.title.size() <= 100 &&
+             data.description is string && data.description.size() <= 5000 &&
+             data.productAge is string && data.productAge.size() <= 50 &&
+             data.price is number && data.price >= 0 &&
+             data.isPriceNegotiable is bool &&
+             data.images is list && data.images.size() <= 10 &&
+             data.sellerId is string && data.sellerId.size() <= 128 &&
+             data.sellerName is string && data.sellerName.size() <= 100 &&
+             data.sellerEmail is string && data.sellerEmail.matches('.+@iitdh\\.ac\\.in$') &&
+             data.sellerPhone is string && data.sellerPhone.size() <= 20 &&
+             data.createdAt is number &&
+             data.expiresAt is number &&
+             data.status is string && data.status.matches('^(active|sold|expired)$') &&
+             data.contactClicks is number &&
+             data.views is number &&
+             data.updatedAt is number;
+    }
+
     match /products/{productId} {
-      // Visibility: Full public read for current campus offerings
-      allow read, list: if true;
+      // Visibility: Only signed-in campus members can browse
+      allow read, list: if isSignedIn();
       
       // Creation: Verified student sellers only
       allow create: if isIITStudent() && isValidId(productId) &&
-                   incoming().title is string && incoming().title.size() <= 100 &&
-                   incoming().sellerId == request.auth.uid;
+                    incoming().keys().hasAll(['id', 'title', 'description', 'productAge', 'price', 'isPriceNegotiable', 'images', 'sellerId', 'sellerName', 'sellerEmail', 'sellerPhone', 'createdAt', 'expiresAt', 'status', 'contactClicks', 'views', 'updatedAt']) &&
+                    incoming().keys().hasOnly(['id', 'title', 'description', 'productAge', 'price', 'isPriceNegotiable', 'images', 'sellerId', 'sellerName', 'sellerEmail', 'sellerPhone', 'createdAt', 'expiresAt', 'status', 'contactClicks', 'views', 'updatedAt']) &&
+                    isValidProduct(incoming()) &&
+                    incoming().sellerId == request.auth.uid &&
+                    incoming().sellerEmail == request.auth.token.email;
       
       // Moderation & Interaction:
       allow update: if isAdmin() || (
-        // Self-service update
         isIITStudent() && 
         existing().sellerId == request.auth.uid &&
-        incoming().sellerId == existing().sellerId &&
-        incoming().title is string && incoming().title.size() <= 100
+        incoming().diff(existing()).affectedKeys().hasOnly(['title', 'description', 'productAge', 'price', 'isPriceNegotiable', 'images', 'status', 'updatedAt']) &&
+        incoming().title is string && incoming().title.size() <= 100 &&
+        incoming().description is string && incoming().description.size() <= 5000 &&
+        incoming().price is number && incoming().price >= 0 &&
+        incoming().status is string && incoming().status.matches('^(active|sold|expired)$') &&
+        incoming().images is list && incoming().images.size() <= 10 &&
+        incoming().updatedAt is number
       ) || (
         // Public signals (Analytics)
         isSignedIn() && 
-        incoming().diff(existing()).affectedKeys().hasOnly(['views', 'contactClicks'])
+        incoming().diff(existing()).affectedKeys().hasOnly(['views', 'contactClicks']) &&
+        (incoming().views == existing().views + 1 || existing().views == null) &&
+        (incoming().contactClicks == existing().contactClicks + 1 || existing().contactClicks == null)
       );
       
       allow delete: if isAdmin() || (
@@ -92,7 +137,7 @@ service cloud.firestore {
     // ---------------------------------------------------------
     match /admins/{adminId} {
       allow read: if isSignedIn();
-      allow write: if isAdmin();
+      allow write: if false; // Only manageable through Firebase Console by project owner
     }
   }
 }

@@ -21,6 +21,16 @@ import toast from 'react-hot-toast';
 
 type Tab = 'listings' | 'users';
 
+import { motion, AnimatePresence } from 'motion/react';
+
+// Snappy spring configuration for a premium feel
+const snappySpring = {
+  type: 'spring',
+  stiffness: 450,
+  damping: 30,
+  mass: 1
+};
+
 export default function Admin() {
   const { user, isAdmin, loading: authLoading } = useAuth();
   const navigate = useNavigate();
@@ -177,8 +187,14 @@ export default function Admin() {
   if (authLoading || !isAdmin) {
     return (
       <div className="flex flex-col items-center justify-center h-64 gap-4">
-        <RefreshCw className="animate-spin text-indigo-600" size={32} />
-        <p className="text-gray-500 font-medium tracking-tight">Verifying Admin Privileges...</p>
+        <motion.div 
+          initial={{ rotate: 0 }}
+          animate={{ rotate: 360 }}
+          transition={{ duration: 1.5, repeat: Infinity, ease: "linear" }}
+        >
+          <RefreshCw className="text-indigo-600" size={32} />
+        </motion.div>
+        <p className="text-gray-500 font-bold uppercase tracking-widest text-[10px]">Authenicating Admin Authority...</p>
       </div>
     );
   }
@@ -196,88 +212,120 @@ export default function Admin() {
   );
 
   return (
-    <div className="max-w-7xl mx-auto py-8 px-4 sm:px-6">
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-8">
-        <div className="flex items-center gap-3">
-          <div className="p-3 bg-indigo-600 text-white rounded-2xl shadow-indigo-200 shadow-lg">
-            <ShieldCheck size={28} />
-          </div>
+    <div className="max-w-7xl mx-auto py-12 px-4 sm:px-6">
+      <motion.div 
+        initial={{ opacity: 0, y: -20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={snappySpring}
+        className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6 mb-12"
+      >
+        <div className="flex items-center gap-4">
+          <motion.div 
+            whileHover={{ scale: 1.05, rotate: 5 }}
+            whileTap={{ scale: 0.95 }}
+            className="p-4 bg-indigo-600 text-white rounded-[24px] shadow-2xl shadow-indigo-200"
+          >
+            <ShieldCheck size={32} strokeWidth={2.5} />
+          </motion.div>
           <div>
-            <h1 className="text-3xl font-black text-gray-900 tracking-tight">Admin Console</h1>
-            <p className="text-gray-500 font-medium">IIT DH Exchange Management</p>
+            <h1 className="text-4xl font-black text-gray-900 tracking-tightest uppercase italic">Admin Console</h1>
+            <p className="text-gray-900 font-black text-[10px] uppercase tracking-[0.2em] italic">Campus Infrastructure Management</p>
           </div>
         </div>
-        <button 
+        <motion.button 
+          whileHover={{ scale: 1.02 }}
+          whileTap={{ scale: 0.98 }}
           onClick={fetchData}
-          className="flex items-center gap-2 px-4 py-2 bg-white border border-gray-200 rounded-xl text-gray-600 hover:text-indigo-600 hover:border-indigo-200 transition shadow-sm font-bold text-sm"
+          className="flex items-center gap-3 px-6 py-3 bg-white border border-gray-100 rounded-2xl text-gray-900 shadow-xl shadow-gray-200/50 font-black text-xs uppercase tracking-widest hover:border-indigo-200 transition-all italic"
         >
-          <RefreshCw size={16} className={loading ? "animate-spin" : ""} /> Refresh Data
-        </button>
-      </div>
+          <RefreshCw size={14} className={loading ? "animate-spin" : ""} strokeWidth={3} /> Synchronize Data
+        </motion.button>
+      </motion.div>
 
       {/* Stats Grid */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 mb-10">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8 mb-16">
         {[
           { label: 'Total Listings', val: stats.totalProducts, icon: Package, color: 'text-blue-600', bg: 'bg-blue-50' },
           { label: 'Active Items', val: stats.activeProducts, icon: CheckCircle, color: 'text-green-600', bg: 'bg-green-50' },
           { label: 'Total Users', val: stats.totalUsers, icon: Users, color: 'text-purple-600', bg: 'bg-purple-50' }
         ].map((stat, i) => (
-          <div key={i} className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm flex items-center gap-4">
-            <div className={`p-4 rounded-xl ${stat.bg} ${stat.color}`}>
-              <stat.icon size={24} />
+          <motion.div 
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ ...snappySpring, delay: i * 0.1 }}
+            key={i} 
+            className="bg-white p-8 rounded-[32px] border border-gray-50 shadow-2xl shadow-gray-100 flex items-center gap-6 group hover:-translate-y-1 transition-all"
+          >
+            <div className={`p-5 rounded-2xl ${stat.bg} ${stat.color} transition-transform group-hover:scale-110 shadow-lg`}>
+              <stat.icon size={28} strokeWidth={2.5} />
             </div>
             <div>
-              <p className="text-xs font-bold text-gray-400 uppercase tracking-widest">{stat.label}</p>
-              <p className="text-2xl font-black text-gray-900">{stat.val}</p>
+              <p className="text-[10px] font-black text-gray-600 uppercase tracking-[0.2em] mb-1 italic">{stat.label}</p>
+              <p className="text-3xl font-black text-gray-900 tracking-tighter">{stat.val}</p>
             </div>
-          </div>
+          </motion.div>
         ))}
       </div>
 
       {/* Tabs */}
-      <div className="flex border-b border-gray-200 mb-8 gap-8 overflow-x-auto no-scrollbar">
+      <div className="flex border-b border-gray-100 mb-12 gap-10 overflow-x-auto no-scrollbar">
         {(['listings', 'users'] as Tab[]).map(tab => (
           <button
             key={tab}
             onClick={() => setActiveTab(tab)}
-            className={`pb-4 text-sm font-black tracking-widest uppercase transition-all relative ${
-              activeTab === tab ? 'text-indigo-600' : 'text-gray-400 hover:text-gray-600'
+            className={`pb-5 text-[11px] font-black tracking-[0.2em] uppercase transition-all relative ${
+              activeTab === tab ? 'text-indigo-600 italic' : 'text-gray-300 hover:text-gray-500'
             }`}
           >
             {tab}
-            {activeTab === tab && <div className="absolute bottom-0 left-0 right-0 h-1 bg-indigo-600 rounded-full" />}
+            {activeTab === tab && (
+              <motion.div 
+                layoutId="adminTab"
+                className="absolute bottom-0 left-0 right-0 h-1 bg-indigo-600 rounded-full" 
+              />
+            )}
           </button>
         ))}
       </div>
 
       {/* Content Area */}
-      <div className="bg-white rounded-3xl border border-gray-200 shadow-sm overflow-hidden">
-        
-        {/* Search Header */}
-        <div className="p-4 border-b border-gray-100 flex flex-col sm:flex-row justify-between items-center gap-4">
-          <div className="relative w-full sm:w-80">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
-            <input 
-              type="text" 
-              placeholder={`Search ${activeTab}...`}
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full pl-10 pr-4 py-2 bg-gray-50 border-none rounded-xl text-sm focus:ring-2 focus:ring-indigo-500 outline-none"
-            />
+      <AnimatePresence mode="wait">
+        <motion.div 
+          key={activeTab}
+          initial={{ opacity: 0, x: 20 }}
+          animate={{ opacity: 1, x: 0 }}
+          exit={{ opacity: 0, x: -20 }}
+          transition={snappySpring}
+          className="bg-white rounded-[40px] border border-gray-50 shadow-2xl shadow-indigo-100 overflow-hidden"
+        >
+          
+          {/* Search Header */}
+          <div className="p-8 border-b border-gray-50 flex flex-col sm:flex-row justify-between items-center gap-6">
+            <div className="relative w-full sm:w-96">
+              <Search className="absolute left-5 top-1/2 -translate-y-1/2 text-gray-300" size={18} strokeWidth={3} />
+              <input 
+                type="text" 
+                placeholder={`FILTER ${activeTab.toUpperCase()}...`}
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="w-full pl-14 pr-6 py-4 bg-gray-50/50 border border-gray-100 rounded-2xl text-sm font-bold tracking-tight focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-200 outline-none transition-all uppercase placeholder:text-gray-300"
+              />
+            </div>
           </div>
-        </div>
 
-        <div className="overflow-x-auto sm:overflow-visible">
-          {loading ? (
-            <div className="py-20 text-center"><RefreshCw className="animate-spin inline-block text-indigo-600" /></div>
-          ) : activeTab === 'listings' ? (
+          <div className="overflow-x-auto sm:overflow-visible">
+            {loading ? (
+              <div className="py-32 text-center">
+                <RefreshCw className="animate-spin inline-block text-indigo-200" size={40} />
+              </div>
+            ) : activeTab === 'listings' ? (
             <div className="min-w-full">
               {/* Desktop Table */}
               <table className="hidden sm:table w-full text-left">
-                <thead className="bg-gray-50 text-[10px] font-black uppercase tracking-widest text-gray-400 border-b border-gray-100">
+                <thead className="bg-gray-50 text-[10px] font-black uppercase tracking-widest text-gray-600 border-b border-gray-100">
                   <tr>
-                    <th className="px-6 py-4">Product</th>
-                    <th className="px-6 py-4">Seller</th>
+                    <th className="px-6 py-4">Listings</th>
+                    <th className="px-6 py-4">Sellers</th>
                     <th className="px-6 py-4">Price</th>
                     <th className="px-6 py-4">Status</th>
                     <th className="px-6 py-4">Date</th>
@@ -294,13 +342,13 @@ export default function Admin() {
                           </div>
                           <div className="max-w-[200px]">
                             <p className="font-bold text-gray-900 truncate text-sm">{l.title}</p>
-                            <p className="text-[10px] text-gray-400 font-mono truncate uppercase">{l.id}</p>
+                            <p className="text-[10px] text-gray-600 font-mono truncate uppercase">{l.id}</p>
                           </div>
                         </div>
                       </td>
                       <td className="px-6 py-4 text-sm font-medium">
                         <p className="text-gray-900">{l.sellerName}</p>
-                        <p className="text-xs text-gray-400">{l.sellerEmail}</p>
+                        <p className="text-xs text-gray-600">{l.sellerEmail}</p>
                       </td>
                       <td className="px-6 py-4">
                         <span className="text-sm font-black text-indigo-600">₹{l.price.toLocaleString()}</span>
@@ -313,7 +361,7 @@ export default function Admin() {
                           {l.status}
                         </span>
                       </td>
-                      <td className="px-6 py-4 text-xs text-gray-400 font-medium">
+                      <td className="px-6 py-4 text-xs text-gray-600 font-medium">
                         {formatSafeDate(l.createdAt, 'MMM d, h:mm a')}
                       </td>
                       <td className="px-6 py-4 text-right">
@@ -368,7 +416,7 @@ export default function Admin() {
                           <h4 className="font-bold text-gray-900 text-sm truncate">{l.title}</h4>
                           <span className="text-indigo-600 font-black text-sm shrink-0">₹{l.price.toLocaleString()}</span>
                         </div>
-                        <p className="text-[10px] text-gray-400 font-mono truncate uppercase mt-1">ID: {l.id}</p>
+                        <p className="text-[10px] text-gray-600 font-mono truncate uppercase mt-1">ID: {l.id}</p>
                         <div className="mt-2 flex items-center gap-2">
                            <span className={`px-2 py-0.5 rounded-md text-[8px] font-black uppercase tracking-wider ${
                             l.status === 'active' ? 'bg-green-100 text-green-700' : 
@@ -376,14 +424,14 @@ export default function Admin() {
                           }`}>
                             {l.status}
                           </span>
-                          <span className="text-[10px] text-gray-400">{formatSafeDate(l.createdAt, 'MMM d')}</span>
+                          <span className="text-[10px] text-gray-600">{formatSafeDate(l.createdAt, 'MMM d')}</span>
                         </div>
                       </div>
                     </div>
                     <div className="flex items-center justify-between pt-2">
                       <div className="text-[10px]">
                         <p className="text-gray-900 font-bold">{l.sellerName}</p>
-                        <p className="text-gray-400">{l.sellerEmail}</p>
+                        <p className="text-gray-600">{l.sellerEmail}</p>
                       </div>
                       <div className="flex gap-2">
                         <button 
@@ -414,12 +462,12 @@ export default function Admin() {
             <div className="min-w-full">
               {/* Desktop Table */}
               <table className="hidden sm:table w-full text-left">
-                <thead className="bg-gray-50 text-[10px] font-black uppercase tracking-widest text-gray-400 border-b border-gray-100">
+                <thead className="bg-gray-50 text-[10px] font-black uppercase tracking-widest text-gray-600 border-b border-gray-100">
                   <tr>
                     <th className="px-6 py-4">User</th>
                     <th className="px-6 py-4">Contact</th>
                     <th className="px-6 py-4">Joined</th>
-                    <th className="px-6 py-4">Listings</th>
+                    <th className="px-6 py-4">Total Listings</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-50">
@@ -435,9 +483,9 @@ export default function Admin() {
                       </td>
                       <td className="px-6 py-4 text-sm font-medium">
                         <p className="text-gray-900">{u.email}</p>
-                        <p className="text-xs text-gray-400">{u.phone}</p>
+                        <p className="text-xs text-gray-600">{u.phone}</p>
                       </td>
-                      <td className="px-6 py-4 text-xs text-gray-400">
+                      <td className="px-6 py-4 text-xs text-gray-600">
                         {formatSafeDate(u.createdAt, 'MMM yyyy')}
                       </td>
                       <td className="px-6 py-4 text-sm font-black text-indigo-600">
@@ -458,16 +506,16 @@ export default function Admin() {
                         </div>
                         <div>
                           <p className="font-bold text-gray-900 text-sm">{u.name}</p>
-                          <p className="text-[10px] text-gray-400 uppercase tracking-widest">Joined {formatSafeDate(u.createdAt, 'MMM yyyy')}</p>
+                          <p className="text-[10px] text-gray-600 uppercase tracking-widest">Joined {formatSafeDate(u.createdAt, 'MMM yyyy')}</p>
                         </div>
                     </div>
                     <div className="flex justify-between items-center text-xs">
                       <div>
                         <p className="text-gray-700">{u.email}</p>
-                        <p className="text-gray-500">{u.phone}</p>
+                        <p className="text-gray-600">{u.phone}</p>
                       </div>
                       <div className="text-right">
-                        <p className="text-[10px] text-gray-400 font-black uppercase tracking-tighter">Daily Uploads</p>
+                        <p className="text-[10px] text-gray-600 font-black uppercase tracking-tighter">Total Listings</p>
                         <p className="text-lg font-black text-indigo-600">{u.listingsCountToday}</p>
                       </div>
                     </div>
@@ -477,9 +525,10 @@ export default function Admin() {
             </div>
           ) : null}
         </div>
-      </div>
+      </motion.div>
+    </AnimatePresence>
 
-      {/* Warning Area */}
+    {/* Warning Area */}
       <div className="mt-8 p-6 bg-red-50 border border-red-100 rounded-3xl flex items-center gap-4 text-red-600">
         <div className="p-3 bg-red-100 rounded-xl"><AlertTriangle size={24} /></div>
         <div>

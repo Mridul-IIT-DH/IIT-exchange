@@ -7,6 +7,16 @@ import { IndianRupee, ImagePlus, X, AlertCircle } from 'lucide-react';
 import toast from 'react-hot-toast';
 import imageCompression from 'browser-image-compression';
 
+import { motion, AnimatePresence } from 'motion/react';
+
+// Snappy spring configuration for a premium feel
+const snappySpring = {
+  type: 'spring',
+  stiffness: 450,
+  damping: 30,
+  mass: 1
+};
+
 export default function Sell() {
   const { user, profile, isAdmin } = useAuth();
   const navigate = useNavigate();
@@ -142,7 +152,6 @@ export default function Sell() {
             initialQuality: 0.8,
           };
 
-          // We no longer need VITE_CLOUDINARY_UPLOAD_PRESET since uploading happens securely on our backend
           for (const file of images) {
             toast.loading(`Compressing ${file.name}...`, { id: `process-${file.name}` });
             const compressedFile = await imageCompression(file as unknown as File, compressionOptions);
@@ -152,7 +161,6 @@ export default function Sell() {
             const formData = new FormData();
             formData.append('file', compressedFile, file.name);
 
-            // POST to our secure backend endpoint Instead of uploading directly to Cloudinary
             const idToken = await user.getIdToken();
             const response = await fetch(`/api/images/upload`, {
               method: 'POST',
@@ -187,7 +195,6 @@ export default function Sell() {
         }
       }
 
-      // Cleanup user-deleted existing images from Cloudinary
       if (isEditMode && deletedImages.length > 0) {
         const idToken = await user.getIdToken();
         for (const imageUrl of deletedImages) {
@@ -209,7 +216,6 @@ export default function Sell() {
       const finalImageUrls = [...existingImages, ...newlyUploadedUrls];
 
       if (isEditMode) {
-        // Update Document
         const updateData = {
           title: title.trim(),
           description: description.trim(),
@@ -223,7 +229,6 @@ export default function Sell() {
         await updateDoc(doc(db, 'products', id), updateData);
         toast.success('Listing updated successfully!');
       } else {
-        // Create Document
         const productId = getUUID();
         const productData = {
           id: productId,
@@ -238,7 +243,7 @@ export default function Sell() {
           sellerEmail: profile.email,
           sellerPhone: profile.phone,
           createdAt: Date.now(),
-          expiresAt: Date.now() + 10 * 24 * 60 * 60 * 1000, // 10 days
+          expiresAt: Date.now() + 10 * 24 * 60 * 60 * 1000,
           status: 'active',
           contactClicks: 0,
           views: 0,
@@ -265,88 +270,103 @@ export default function Sell() {
   if (fetching) {
     return (
       <div className="flex justify-center items-center h-64">
-         <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-indigo-600"></div>
+         <motion.div 
+           initial={{ scale: 0.8, opacity: 0 }}
+           animate={{ scale: 1, opacity: 1 }}
+           transition={snappySpring}
+           className="animate-spin rounded-full h-10 w-10 border-b-2 border-indigo-600"
+         ></motion.div>
       </div>
     );
   }
 
   return (
-    <div className="max-w-2xl mx-auto py-8">
-      <div className="mb-8">
-        <h1 className="text-3xl font-bold text-gray-900 tracking-tight">
-          {isEditMode ? 'Edit Listing' : 'Sell an Item'}
+    <div className="max-w-2xl mx-auto py-12 px-4">
+      <motion.div 
+        initial={{ opacity: 0, x: -30 }}
+        animate={{ opacity: 1, x: 0 }}
+        transition={snappySpring}
+        className="mb-12"
+      >
+        <h1 className="text-4xl font-black text-black tracking-tightest uppercase italic mt-4">
+          Sell Item
         </h1>
-        <p className="text-gray-500 mt-2">
+        <p className="text-gray-600 font-bold text-sm mt-2 max-w-md">
           {isEditMode 
-            ? 'Update your product details and images.' 
-            : 'Post your item to the private IIT DH marketplace. Active for 10 days.'}
+            ? 'Adjust parameters and images for your existing listing.' 
+            : 'Initialize your listing onto the campus trading grid. All listings remain active for 10 cycles.'}
         </p>
-      </div>
+      </motion.div>
 
-      <form onSubmit={handleSubmit} className="space-y-8 bg-white p-6 sm:p-8 rounded-2xl shadow-sm border border-gray-200">
-        
+      <motion.form 
+        initial={{ opacity: 0, y: 30 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ ...snappySpring, delay: 0.1 }}
+        onSubmit={handleSubmit} 
+        className="space-y-10 bg-white p-8 sm:p-12 rounded-[40px] shadow-2xl shadow-indigo-100 border border-gray-100 relative overflow-hidden"
+      >
+        <div className="absolute top-0 right-0 w-32 h-32 bg-indigo-50/50 rounded-full translate-x-12 -translate-y-12 blur-3xl"></div>
+
         {/* Title */}
-        <div>
-          <label className="block text-sm font-medium text-gray-700">Product Title <span className="text-red-500">*</span></label>
+        <div className="relative">
+          <label className="block text-[11px] font-black text-black uppercase tracking-widest mb-2 italic">Product Name <span className="text-red-500">*</span></label>
           <input 
             type="text" 
             required
             maxLength={100}
             value={title}
             onChange={(e) => setTitle(e.target.value)}
-            placeholder="e.g. Engineering Graphics Kit, Used Bicycle"
-            className="mt-1 block w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-indigo-500 focus:border-indigo-500 shadow-sm"
+            placeholder="E.G. ENGINEERING GRAPHICS KIT, MACBOOK AIR M1"
+            className="block w-full px-6 py-4 bg-gray-50 border border-gray-100 rounded-2xl focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 focus:bg-white outline-none transition-all font-black text-sm tracking-tight placeholder:text-gray-500"
           />
         </div>
 
         {/* Description */}
         <div>
-          <label className="block text-sm font-medium text-gray-700">Description <span className="text-red-500">*</span></label>
+          <label className="block text-[11px] font-black text-black uppercase tracking-widest mb-2 italic">Detailed Description <span className="text-red-500">*</span></label>
           <textarea 
             required
             rows={4}
             maxLength={1000}
             value={description}
             onChange={(e) => setDescription(e.target.value)}
-            placeholder="Describe the condition, reasons for selling..."
-            className="mt-1 block w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-indigo-500 focus:border-indigo-500 shadow-sm"
+            placeholder="DESCRIBE CONDITION, DEFECTS, OR SPECIFICATIONS..."
+            className="block w-full px-6 py-4 bg-gray-50 border border-gray-100 rounded-2xl focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 focus:bg-white outline-none transition-all font-bold text-sm tracking-tight leading-relaxed placeholder:text-gray-500"
           />
         </div>
 
         {/* Product Age */}
         <div>
-          <label className="block text-sm font-medium text-gray-700">Product Age <span className="text-red-500">*</span></label>
+          <label className="block text-[11px] font-black text-black uppercase tracking-widest mb-2 italic">Product Age <span className="text-red-500">*</span></label>
           <input 
             type="text" 
             required
             value={productAge}
             onChange={(e) => setProductAge(e.target.value)}
-            placeholder="e.g. 6 Months, 2 Years old..."
-            className="mt-1 block w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-indigo-500 focus:border-indigo-500 shadow-sm"
+            placeholder="E.G. 6 MONTHS, 2 SEMESTERS OLD..."
+            className="block w-full px-6 py-4 bg-gray-50 border border-gray-100 rounded-2xl focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 focus:bg-white outline-none transition-all font-black text-sm tracking-tight placeholder:text-gray-500"
           />
         </div>
 
         {/* Price Box */}
-        <div className="bg-gray-50 p-5 rounded-xl border border-gray-200">
-          <div className="flex items-center justify-between mb-4">
-            <h3 className="text-sm font-semibold text-gray-900">Pricing Strategy</h3>
-            <div className="flex items-center">
+        <div className="bg-indigo-50 p-8 rounded-[32px] border border-indigo-100 relative group">
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-6 gap-4">
+            <h3 className="text-[11px] font-black text-indigo-700 uppercase tracking-[0.2em] italic">Valuation Control</h3>
+            <label className="relative inline-flex items-center cursor-pointer group">
               <input
-                id="negotiable"
                 type="checkbox"
                 checked={isNegotiable}
                 onChange={(e) => setIsNegotiable(e.target.checked)}
-                className="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded"
+                className="sr-only peer"
               />
-              <label htmlFor="negotiable" className="ml-2 block text-sm text-gray-700">
-                Open to negotiation
-              </label>
-            </div>
+              <div className="w-11 h-6 bg-indigo-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-indigo-600 transition-all shadow-inner"></div>
+              <span className="ml-3 text-[11px] font-black text-indigo-700 uppercase tracking-widest">Negotiable</span>
+            </label>
           </div>
           
           <div className="relative">
-            <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-              <IndianRupee className="h-5 w-5 text-gray-400" />
+            <div className="absolute inset-y-0 left-0 pl-6 flex items-center pointer-events-none">
+              <IndianRupee size={20} className="text-indigo-400" strokeWidth={3} />
             </div>
             <input 
               type="number" 
@@ -354,79 +374,109 @@ export default function Sell() {
               value={price}
               onChange={(e) => setPrice(e.target.value)}
               onWheel={(e) => (e.target as HTMLInputElement).blur()}
-              placeholder="Leave 0 or empty for 'Discuss Price'"
-              className="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-lg focus:ring-indigo-500 focus:border-indigo-500 shadow-sm"
+              placeholder="ZERO / EMPTY FOR 'DISCUSS PRICE'"
+              className="block w-full pl-14 pr-6 py-5 bg-white border border-indigo-100 rounded-2xl shadow-inner focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 outline-none transition-all font-black text-xl tracking-tightest placeholder:text-indigo-200 placeholder:text-sm"
             />
           </div>
           
-          {Number(price) > 10000 && (
-            <p className="mt-2 text-sm text-yellow-600 flex items-center gap-1">
-              <AlertCircle size={16} /> High value item. Please deal cautiously on campus.
-            </p>
+          {Number(price) > 5000 && (
+            <motion.p 
+              initial={{ opacity: 0, y: 5 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="mt-4 text-[10px] text-amber-600 font-black flex items-center gap-2 uppercase tracking-widest bg-amber-50 p-2 rounded-lg border border-amber-100"
+            >
+              <AlertCircle size={14} strokeWidth={3} /> Attention: High-Value Asset Verification Required.
+            </motion.p>
           )}
         </div>
 
         {/* Images */}
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-2">Images (Max 5 total)</label>
+        <div className="space-y-4">
+          <label className="block text-[11px] font-black text-black uppercase tracking-widest italic">Images (MAX 5)</label>
           
-          <div className="grid grid-cols-2 sm:grid-cols-3 gap-4 mb-4">
+          <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
             
             {/* Existing Images */}
-            {existingImages.map((url, idx) => (
-              <div key={`existing-${idx}`} className="relative aspect-square rounded-lg overflow-hidden border border-gray-200">
-                <img src={url} alt={`Existing ${idx}`} className="w-full h-full object-cover" />
-                <button
-                  type="button"
-                  onClick={() => removeExistingImage(idx)}
-                  className="absolute top-1 right-1 bg-red-600 text-white rounded-full p-1 opacity-80 hover:opacity-100"
+            <AnimatePresence>
+              {existingImages.map((url, idx) => (
+                <motion.div 
+                  layout
+                  initial={{ scale: 0.8, opacity: 0 }}
+                  animate={{ scale: 1, opacity: 1 }}
+                  exit={{ scale: 0.8, opacity: 0 }}
+                  key={`existing-${idx}`} 
+                  className="relative aspect-square rounded-3xl overflow-hidden border border-gray-100 shadow-lg group"
                 >
-                  <X size={14} />
-                </button>
-              </div>
-            ))}
+                  <img src={url} alt={`Existing ${idx}`} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700" />
+                  <motion.button
+                    whileTap={{ scale: 0.8 }}
+                    type="button"
+                    onClick={() => removeExistingImage(idx)}
+                    className="absolute top-2 right-2 bg-red-500/90 text-white rounded-xl p-2 shadow-xl backdrop-blur-md border border-white/20 transition-all hover:bg-red-600"
+                  >
+                    <X size={14} strokeWidth={3} />
+                  </motion.button>
+                </motion.div>
+              ))}
+            </AnimatePresence>
 
             {/* New Image Previews */}
-            {imagePreviews.map((url, idx) => (
-              <div key={`new-${idx}`} className="relative aspect-square rounded-lg overflow-hidden border border-gray-200">
-                <img src={url} alt={`Preview ${idx}`} className="w-full h-full object-cover" />
-                <button
-                  type="button"
-                  onClick={() => removeNewImage(idx)}
-                  className="absolute top-1 right-1 bg-red-600 text-white rounded-full p-1 opacity-80 hover:opacity-100"
+            <AnimatePresence>
+              {imagePreviews.map((url, idx) => (
+                <motion.div 
+                  layout
+                  initial={{ scale: 0.8, opacity: 0 }}
+                  animate={{ scale: 1, opacity: 1 }}
+                  exit={{ scale: 0.8, opacity: 0 }}
+                  key={`new-${idx}`} 
+                  className="relative aspect-square rounded-3xl overflow-hidden border border-gray-100 shadow-lg group"
                 >
-                  <X size={14} />
-                </button>
-              </div>
-            ))}
+                  <img src={url} alt={`Preview ${idx}`} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700" />
+                  <motion.button
+                    whileTap={{ scale: 0.8 }}
+                    type="button"
+                    onClick={() => removeNewImage(idx)}
+                    className="absolute top-2 right-2 bg-red-500/90 text-white rounded-xl p-2 shadow-xl backdrop-blur-md border border-white/20 transition-all hover:bg-red-600"
+                  >
+                    <X size={14} strokeWidth={3} />
+                  </motion.button>
+                </motion.div>
+              ))}
+            </AnimatePresence>
             
             {/* Add Image Button */}
             {(existingImages.length + images.length) < 5 && (
-              <label className="aspect-square border-2 border-dashed border-gray-300 rounded-lg flex flex-col items-center justify-center text-gray-500 hover:text-indigo-600 hover:border-indigo-500 cursor-pointer transition">
-                <ImagePlus size={32} />
-                <span className="text-xs font-medium mt-2">Add Image</span>
+              <motion.label 
+                whileHover={{ scale: 1.02 }}
+                whileTap={{ scale: 0.98 }}
+                className="aspect-square border-4 border-dashed border-gray-200 rounded-3xl flex flex-col items-center justify-center text-gray-500 hover:text-indigo-600 hover:border-indigo-200 hover:bg-indigo-50/30 cursor-pointer transition-all duration-300"
+              >
+                <ImagePlus size={40} strokeWidth={2} />
+                <span className="text-[10px] font-black uppercase tracking-widest mt-4 italic text-black">Upload Assets</span>
                 <input 
-                  type="file" 
-                  accept="image/jpeg, image/png, image/webp" 
-                  multiple 
-                  className="hidden" 
-                  onChange={handleImageChange} 
+                   type="file" 
+                   accept="image/jpeg, image/png, image/webp" 
+                   multiple 
+                   className="hidden" 
+                   onChange={handleImageChange} 
                 />
-              </label>
+              </motion.label>
             )}
           </div>
         </div>
 
-        <button
+        <motion.button
+          whileHover={{ scale: 1.02, y: -2 }}
+          whileTap={{ scale: 0.98 }}
           type="submit"
           disabled={loading}
-          className="w-full flex justify-center py-3 px-4 border border-transparent rounded-lg shadow-sm text-sm font-bold text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none transition disabled:bg-indigo-400"
+          className="w-full flex justify-center py-6 px-4 bg-indigo-600 text-white rounded-3xl font-black uppercase tracking-widest text-[13px] shadow-2xl shadow-indigo-100 hover:bg-indigo-700 transition-all disabled:bg-indigo-300 disabled:shadow-none italic"
         >
           {loading 
-            ? (isEditMode ? 'Saving Changes...' : 'Uploading & Creating Listing...') 
-            : (isEditMode ? 'Save Changes' : 'Post Listing')}
-        </button>
-      </form>
+            ? (isEditMode ? 'SYNCHRONIZING...' : 'INITIALIZING LISTING...') 
+            : (isEditMode ? 'UPDATE LISTING' : 'POST LISTING')}
+        </motion.button>
+      </motion.form>
     </div>
   );
 }

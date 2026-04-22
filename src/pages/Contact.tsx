@@ -1,9 +1,17 @@
-import React from 'react';
-import { Mail, ExternalLink, Info } from 'lucide-react';
+import { motion } from 'motion/react';
+import { Mail, ExternalLink } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 
+// Snappy spring configuration for a premium feel
+const snappySpring = {
+  type: 'spring',
+  stiffness: 450,
+  damping: 30,
+  mass: 1
+};
+
 export default function Contact() {
-  const { user, profile } = useAuth();
+  const { user, profile, signIn } = useAuth();
 
   // ==========================================
   // CONFIGURATION
@@ -27,43 +35,60 @@ export default function Contact() {
   }
 
   return (
-    <div className="max-w-4xl mx-auto py-12 px-4 sm:px-6">
-      <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
-        <div className="bg-indigo-600 px-8 py-10 text-white text-center">
-          <Mail className="h-12 w-12 mx-auto mb-4 opacity-90" />
-          <h1 className="text-3xl font-bold tracking-tight mb-2">Contact Admin</h1>
-          <p className="text-indigo-100">
-            Have an issue or a suggestion for IIT Exchange? Fill out the form below.
-          </p>
-        </div>
-        
-        <div className="p-4 sm:p-8 w-full flex flex-col items-center">
-          <p className="text-sm text-gray-500 mb-6 text-center">
-            If the form doesn't load below, you can also <a href={googleFormUrl.replace('?embedded=true', '')} target="_blank" rel="noopener noreferrer" className="text-indigo-600 hover:underline inline-flex items-center gap-1 font-medium">open it in a new tab <ExternalLink size={14} /></a>.
-          </p>
+    <div className="max-w-4xl mx-auto py-16 px-4">
+      <motion.div 
+        initial={{ opacity: 0, scale: 0.95 }}
+        animate={{ opacity: 1, scale: 1 }}
+        transition={snappySpring}
+        className="bg-white rounded-[40px] shadow-2xl shadow-indigo-100 border border-gray-100 overflow-hidden relative"
+      >
+        <div className="bg-indigo-600 h-2 w-full"></div>
+        <div className="p-10 sm:p-16">
+          <motion.div
+             initial={{ opacity: 0, x: -20 }}
+             animate={{ opacity: 1, x: 0 }}
+             transition={{ ...snappySpring, delay: 0.1 }}
+             className="text-center mb-16"
+          >
+            <h1 className="text-5xl font-black text-black uppercase tracking-tightest italic">Contact Admin</h1>
+          </motion.div>
           
-          <div className="w-full bg-gray-50 rounded-xl overflow-hidden border border-gray-200 relative" style={{ height: '800px' }}>
-            {!user && (
-              <div className="absolute inset-0 bg-white/80 backdrop-blur-sm z-10 flex flex-col items-center justify-center p-6 text-center">
-                <h3 className="text-xl font-bold text-gray-900 mb-2">Please Sign In</h3>
-                <p className="text-gray-600">You must be signed in with your IIT Dharwad account to securely contact the administration.</p>
-              </div>
-            )}
-            <iframe 
-              src={googleFormUrl} 
-              width="100%" 
-              height="100%" 
-              frameBorder="0" 
-              marginHeight={0} 
-              marginWidth={0}
-              title="Contact Admin Form"
-              className="w-full h-full bg-white"
-            >
-              Loading form...
-            </iframe>
+          <div className="w-full flex flex-col items-center">
+            <div className="w-full bg-gray-50 rounded-[32px] overflow-hidden border border-gray-100 relative shadow-inner" style={{ height: '1050px' }}>
+              {!user && (
+                <div className="absolute inset-0 bg-white/80 backdrop-blur-xl z-20 flex flex-col items-center justify-center p-12 text-center">
+                  <div className="p-5 bg-indigo-50 text-indigo-600 rounded-full mb-6">
+                    <Mail size={32} />
+                  </div>
+                  <h3 className="text-2xl font-black text-black mb-4 uppercase italic tracking-tighter">Authorization Required</h3>
+                  <p className="text-gray-600 font-bold text-sm mb-8 italic uppercase tracking-widest">YOU MUST BE AUTHENTICATED VIA THE IIT DHARWAD DOMAIN TO BROADCAST SECURE COMMS.</p>
+                  <motion.button 
+                    whileHover={{ scale: 1.05 }}
+                    whileTap={{ scale: 0.95 }}
+                    onClick={() => signIn && signIn()}
+                    className="px-10 py-4 bg-indigo-600 text-white font-black uppercase tracking-widest text-xs rounded-2xl shadow-2xl shadow-indigo-100 italic"
+                  >
+                    Authenticate Now
+                  </motion.button>
+                </div>
+              )}
+              <iframe 
+                src={googleFormUrl} 
+                width="100%" 
+                height="100%" 
+                frameBorder="0" 
+                marginHeight={0} 
+                marginWidth={0}
+                title="Contact Admin Form"
+                className="w-full h-full bg-white transition-opacity duration-1000"
+              >
+                Loading Command Form...
+              </iframe>
+            </div>
+            
           </div>
         </div>
-      </div>
+      </motion.div>
     </div>
   );
 }

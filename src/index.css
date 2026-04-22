@@ -1,6 +1,23 @@
 @import "tailwindcss";
 
+@theme {
+  --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, monospace;
+}
+
 @layer base {
+  html {
+    scroll-behavior: smooth;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  body {
+    @apply antialiased text-gray-900 bg-gray-50;
+    text-rendering: optimizeLegibility;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
   button, 
   a, 
   [role="button"],
@@ -13,6 +30,14 @@
     cursor: pointer;
   }
 
+  /* Smooth scroll for containers */
+  .snap-scroll {
+    scroll-snap-type: y mandatory;
+  }
+  .snap-item {
+    scroll-snap-align: start;
+  }
+
   /* Ensure disabled elements don't show the pointer */
   button:disabled,
   input:disabled,
@@ -20,17 +45,43 @@
     cursor: not-allowed;
   }
 
+  /* Premium scrollbar for Big Business feel */
+  ::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  ::-webkit-scrollbar-thumb {
+    @apply bg-gray-300 rounded-full hover:bg-gray-400 transition-colors;
+  }
+
+  /* Hardware acceleration for snappy animations */
+  .accelerate {
+    transform: translateZ(0);
+    will-change: transform, opacity;
+  }
+
   /* Remove arrows/spinners from input type number */
-  /* Chrome, Safari, Edge, Opera */
   input::-webkit-outer-spin-button,
   input::-webkit-inner-spin-button {
     -webkit-appearance: none;
     margin: 0;
   }
 
-  /* Firefox */
   input[type=number] {
     -moz-appearance: textfield;
     appearance: textfield;
+  }
+}
+
+@layer components {
+  .no-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
+  .no-scrollbar {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
   }
 }

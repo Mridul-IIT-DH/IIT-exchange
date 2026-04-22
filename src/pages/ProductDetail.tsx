@@ -4,9 +4,19 @@ import { doc, getDoc, updateDoc, deleteDoc, increment, arrayUnion, arrayRemove }
 import { db, handleFirestoreError } from '../lib/firebase';
 import { useAuth } from '../contexts/AuthContext';
 import { cn } from '../lib/utils';
-import { IndianRupee, ShieldAlert, Phone, Mail, ChevronLeft, ChevronRight, Eye, MousePointerClick, ShieldCheck, Heart, Tag } from 'lucide-react';
+import { IndianRupee, ShieldAlert, Phone, Mail, ChevronLeft, ChevronRight, Eye, MousePointerClick, ShieldCheck, Heart, Tag, Copy } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 import toast from 'react-hot-toast';
+
+import { motion, AnimatePresence } from 'motion/react';
+
+// Snappy spring configuration for a premium feel
+const snappySpring = {
+  type: 'spring',
+  stiffness: 450,
+  damping: 30,
+  mass: 1
+};
 
 export default function ProductDetail() {
   const { id } = useParams<{ id: string }>();
@@ -100,7 +110,12 @@ export default function ProductDetail() {
   if (loading) {
     return (
       <div className="flex justify-center items-center h-64">
-        <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-indigo-600"></div>
+        <motion.div 
+          initial={{ scale: 0.8, opacity: 0 }}
+          animate={{ scale: 1, opacity: 1 }}
+          transition={snappySpring}
+          className="animate-spin rounded-full h-10 w-10 border-b-2 border-indigo-600"
+        ></motion.div>
       </div>
     );
   }
@@ -121,70 +136,91 @@ export default function ProductDetail() {
   const canManage = isOwner || isAdmin;
 
   return (
-    <div className="max-w-5xl mx-auto py-6">
-      <Link to="/" className="text-sm font-medium text-gray-500 hover:text-gray-900 mb-6 inline-flex border-b border-transparent hover:border-gray-900 pb-0.5 transition">
-        &larr; Back to listings
-      </Link>
+    <div className="max-w-5xl mx-auto py-12 px-4">
+      <motion.div
+        initial={{ opacity: 0, x: -20 }}
+        animate={{ opacity: 1, x: 0 }} 
+        transition={snappySpring}
+      >
+        <Link to="/" className="text-[10px] font-black text-gray-600 hover:text-indigo-600 uppercase tracking-[0.2em] mb-8 inline-flex items-center gap-2 group transition-all italic">
+          <ChevronLeft size={14} className="group-hover:-translate-x-1 transition-transform" strokeWidth={3} /> Return to Listings
+        </Link>
+      </motion.div>
 
-      <div className="bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden mt-2">
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-0 lg:gap-8 pb-32 md:pb-0">
+      <motion.div 
+        initial={{ opacity: 0, y: 30 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ ...snappySpring, delay: 0.1 }}
+        className="bg-white rounded-[40px] shadow-2xl shadow-indigo-100 border border-gray-100 overflow-hidden mt-8 relative"
+      >
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-0 lg:gap-12 pb-32 md:pb-0">
           
           {/* Left: Images */}
-          <div className="p-0 sm:p-6 md:pr-0">
-            <div className="aspect-square sm:aspect-square bg-gray-100 sm:rounded-xl relative overflow-hidden flex items-center justify-center">
-              {product.images?.length > 0 ? (
-                <>
-                  <img 
+          <div className="p-0 sm:p-10 md:pr-0">
+            <div className="aspect-square bg-gray-50 sm:rounded-[32px] relative overflow-hidden flex items-center justify-center group shadow-inner">
+              <AnimatePresence mode="wait">
+                {product.images?.length > 0 ? (
+                  <motion.img 
+                    key={currentImageIdx}
+                    initial={{ opacity: 0, scale: 1.1 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    exit={{ opacity: 0, scale: 0.9 }}
+                    transition={{ duration: 0.4, ease: [0.22, 1, 0.36, 1] }}
                     src={product.images[currentImageIdx]} 
                     alt={product.title} 
-                    className="object-cover w-full h-full"
+                    className="object-contain w-full h-full"
                     referrerPolicy="no-referrer"
                   />
-                  {product.images.length > 1 && (
-                    <>
+                ) : (
+                  <span className="text-gray-300 font-black uppercase tracking-widest text-xs italic">No Assets Provided</span>
+                )}
+              </AnimatePresence>
+
+              {product.images?.length > 1 && (
+                <>
+                  <motion.button 
+                    whileHover={{ scale: 1.1 }}
+                    whileTap={{ scale: 0.9 }}
+                    onClick={() => setCurrentImageIdx(prev => prev === 0 ? product.images.length - 1 : prev - 1)}
+                    className="absolute left-6 top-1/2 -translate-y-1/2 bg-white/90 backdrop-blur-xl p-3 rounded-2xl shadow-2xl text-indigo-600 border border-indigo-50 transition-all active:scale-90"
+                  >
+                    <ChevronLeft size={24} strokeWidth={3} />
+                  </motion.button>
+                  <motion.button 
+                    whileHover={{ scale: 1.1 }}
+                    whileTap={{ scale: 0.9 }}
+                    onClick={() => setCurrentImageIdx(prev => prev === product.images.length - 1 ? 0 : prev + 1)}
+                    className="absolute right-6 top-1/2 -translate-y-1/2 bg-white/90 backdrop-blur-xl p-3 rounded-2xl shadow-2xl text-indigo-600 border border-indigo-50 transition-all active:scale-90"
+                  >
+                    <ChevronRight size={24} strokeWidth={3} />
+                  </motion.button>
+                  <div className="absolute bottom-8 left-1/2 -translate-x-1/2 flex gap-3 bg-gray-950/20 backdrop-blur-md px-4 py-3 rounded-full shadow-2xl z-10">
+                    {product.images.map((_: any, idx: number) => (
                       <button 
-                        onClick={() => setCurrentImageIdx(prev => prev === 0 ? product.images.length - 1 : prev - 1)}
-                        className="absolute left-4 top-1/2 -translate-y-1/2 bg-white/80 backdrop-blur-md p-2.5 rounded-full shadow-lg text-gray-800 transition md:p-2"
-                      >
-                        <ChevronLeft size={24} className="md:size-5" />
-                      </button>
-                      <button 
-                        onClick={() => setCurrentImageIdx(prev => prev === product.images.length - 1 ? 0 : prev + 1)}
-                        className="absolute right-4 top-1/2 -translate-y-1/2 bg-white/80 backdrop-blur-md p-2.5 rounded-full shadow-lg text-gray-800 transition md:p-2"
-                      >
-                        <ChevronRight size={24} className="md:size-5" />
-                      </button>
-                      <div className="absolute bottom-6 left-1/2 -translate-x-1/2 flex gap-2 bg-black/30 backdrop-blur-md px-3 py-2 rounded-full shadow-lg z-10 sm:bottom-4">
-                        {product.images.map((_: any, idx: number) => (
-                          <button 
-                            key={idx} 
-                            onClick={(e) => {
-                              e.preventDefault();
-                              e.stopPropagation();
-                              setCurrentImageIdx(idx);
-                            }}
-                            className={`w-2 h-2 rounded-full transition-all duration-200 ${idx === currentImageIdx ? 'bg-white scale-125 shadow-sm' : 'bg-white/40'}`}
-                            aria-label={`View image ${idx + 1}`}
-                          />
-                        ))}
-                      </div>
-                    </>
-                  )}
+                        key={idx} 
+                        onClick={(e) => {
+                          e.preventDefault();
+                          e.stopPropagation();
+                          setCurrentImageIdx(idx);
+                        }}
+                        className={`w-1.5 h-1.5 rounded-full transition-all duration-300 ${idx === currentImageIdx ? 'bg-white w-4' : 'bg-white/40 hover:bg-white/60'}`}
+                        aria-label={`View image ${idx + 1}`}
+                      />
+                    ))}
+                  </div>
                 </>
-              ) : (
-                <span className="text-gray-400">No images provided</span>
               )}
             </div>
           </div>
 
           {/* Right: Details */}
-          <div className="py-6 px-4 sm:px-6 md:pl-0 lg:pr-8 flex flex-col">
+          <div className="py-10 px-8 lg:pr-12 flex flex-col">
             <div className="flex justify-between items-start gap-4">
               <div className="flex-1">
-                <h1 className="text-2xl sm:text-3xl font-black text-gray-900 tracking-tight leading-tight">
+                <h1 className="text-4xl font-black text-black tracking-tightest leading-none uppercase italic">
                   {product.title}
                 </h1>
-                <p className="text-xs font-bold text-gray-400 mt-1 uppercase tracking-widest">
+                <p className="text-[10px] font-black text-black mt-4 uppercase tracking-[0.2em] italic">
                   Listed {formatDistanceToNow(product.createdAt, { addSuffix: true })}
                 </p>
               </div>
@@ -192,46 +228,54 @@ export default function ProductDetail() {
                 <button
                   onClick={toggleWishlist}
                   disabled={wishlistLoading}
-                  className={`p-3 rounded-full border transition hidden sm:flex ${
-                    isInWishlist 
-                      ? 'bg-red-50 border-red-200 text-red-500 hover:bg-red-100' 
-                      : 'bg-white border-gray-200 text-gray-400 hover:text-gray-600 hover:bg-gray-50'
-                  }`}
-                  title={isInWishlist ? "Remove from wishlist" : "Add to wishlist"}
+                  className={cn(
+                    "p-2 rounded-full flex items-center justify-center transition border",
+                    isInWishlist ? "text-red-500 bg-red-50 border-red-100" : "text-gray-400 bg-white border-gray-200 hover:bg-gray-50"
+                  )}
                 >
-                  <Heart size={24} fill={isInWishlist ? "currentColor" : "none"} />
+                  <Heart size={20} fill={isInWishlist ? "currentColor" : "none"} />
                 </button>
-                <span className={`px-3 py-1 text-[10px] font-black uppercase tracking-widest rounded-full ${
-                  product.status === 'active' ? 'bg-green-100 text-green-800' :
-                  product.status === 'sold' ? 'bg-gray-100 text-gray-800' : 'bg-red-100 text-red-800'
-                }`}>
-                  {product.status}
-                </span>
+                <motion.div 
+                  whileHover={{ scale: 1.05 }}
+                  whileTap={{ scale: 0.95 }}
+                  className="flex items-center"
+                >
+                  <span className={`px-4 py-1.5 text-[10px] font-black uppercase tracking-widest rounded-full italic border ${
+                    product.status === 'active' ? 'bg-green-50 text-green-700 border-green-100' :
+                    product.status === 'sold' ? 'bg-blue-50 text-blue-700 border-blue-100' : 'bg-red-50 text-red-700 border-red-100'
+                  }`}>
+                    {product.status}
+                  </span>
+                </motion.div>
               </div>
             </div>
 
             {/* Product Meta Info */}
-            <div className="mt-6 flex flex-wrap gap-3">
+            <div className="mt-10 flex flex-wrap gap-4">
               {product.productAge && (
-                <div className="bg-gray-50 px-4 py-2 rounded-xl border border-gray-100 flex-1 sm:flex-none text-center sm:text-left">
-                  <p className="text-[10px] font-black uppercase tracking-widest text-gray-400 mb-0.5">Item Age</p>
-                  <p className="text-sm font-black text-gray-900">{product.productAge}</p>
+                <div className="bg-gray-50/50 p-5 rounded-3xl border border-gray-100 flex-1 min-w-[140px]">
+                  <p className="text-[9px] font-black uppercase tracking-widest text-black mb-2 italic">Product Age</p>
+                  <p className="text-sm font-black text-gray-900 italic">{product.productAge.toUpperCase()}</p>
                 </div>
               )}
-              <div className="bg-indigo-50 px-4 py-2 rounded-xl border border-indigo-100 flex-1 sm:flex-none text-center sm:text-left">
-                <p className="text-[10px] font-black uppercase tracking-widest text-indigo-400 mb-0.5">Price</p>
-                <div className="flex justify-center sm:justify-start items-baseline gap-1">
-                  <IndianRupee size={16} className="text-indigo-600 self-center" />
-                  <span className="text-lg font-black text-indigo-700">{product.price.toLocaleString()}</span>
-                  {product.isPriceNegotiable && <span className="text-[10px] text-indigo-400 lowercase">(negotiable)</span>}
+              <div className="bg-indigo-50/50 p-5 rounded-3xl border border-indigo-100 flex-1 min-w-[140px]">
+                <p className="text-[9px] font-black uppercase tracking-widest text-indigo-700 mb-2 italic">Campus Value</p>
+                <div className="flex items-center justify-between">
+                  <div className="flex items-baseline gap-1">
+                    <IndianRupee size={16} className="text-indigo-600 self-center" strokeWidth={3} />
+                    <span className="text-2xl font-black text-indigo-700 tracking-tighter italic">{product.price.toLocaleString()}</span>
+                  </div>
+                  {product.isPriceNegotiable && (
+                    <span className="bg-indigo-600 text-white text-[8px] font-bold px-2 py-0.5 rounded-full uppercase tracking-tighter">Negotiable</span>
+                  )}
                 </div>
               </div>
             </div>
 
             {/* Description */}
-            <div className="mt-8 border-t border-gray-100 pt-6 flex-1">
-              <h3 className="text-xs font-black uppercase tracking-widest text-gray-400 mb-4">Description</h3>
-              <p className="text-gray-700 whitespace-pre-wrap leading-relaxed font-medium">
+            <div className="mt-10 border-t border-gray-50 pt-8 flex-1">
+              <h3 className="text-[10px] font-black uppercase tracking-widest text-black mb-6 italic">Description</h3>
+              <p className="text-gray-600 whitespace-pre-wrap leading-relaxed font-bold text-sm tracking-tight">
                 {product.description}
               </p>
             </div>
@@ -307,55 +351,16 @@ export default function ProductDetail() {
               </div>
             )}
 
-            {/* Mobile-only Action Bar (Stickyish) */}
-            <div className="md:hidden fixed bottom-24 left-4 right-4 z-50 animate-in fade-in slide-in-from-bottom-4 duration-500">
-              <div className="bg-white/90 backdrop-blur-xl border border-gray-200 rounded-2xl shadow-[0_10px_40px_rgba(0,0,0,0.15)] overflow-hidden flex items-stretch">
-                <button
-                  onClick={toggleWishlist}
-                  disabled={wishlistLoading}
-                  className={cn(
-                    "px-6 border-r border-gray-100 flex items-center justify-center transition",
-                    isInWishlist ? "text-red-500 bg-red-50/50" : "text-gray-400"
-                  )}
-                >
-                  <Heart size={24} fill={isInWishlist ? "currentColor" : "none"} />
-                </button>
-                
-                {!user ? (
-                  <button onClick={() => signIn()} className="flex-1 py-4 text-sm font-black text-white bg-indigo-600 flex items-center justify-center gap-2">
-                    Sign in to Contact
-                  </button>
-                ) : contactRevealed ? (
-                  <div className="flex-1 flex overflow-hidden">
-                    <a href={`tel:${product.sellerPhone}`} className="flex-1 flex items-center justify-center bg-green-500 text-white gap-2 py-4">
-                      <Phone size={18} /> <span className="font-black text-sm">Call</span>
-                    </a>
-                    <a href={`mailto:${product.sellerEmail}`} className="flex-1 flex items-center justify-center bg-indigo-600 text-white gap-2 py-4">
-                      <Mail size={18} /> <span className="font-black text-sm">Mail</span>
-                    </a>
-                  </div>
-                ) : (
-                  <button
-                    onClick={handleRevealContact}
-                    disabled={revealing}
-                    className="flex-1 py-4 text-sm font-black text-white bg-indigo-600 flex items-center justify-center gap-2 disabled:bg-indigo-400"
-                  >
-                    {revealing ? 'Loading...' : 'Reveal Seller Contact'}
-                  </button>
-                )}
-              </div>
-            </div>
-
-            {/* Desktop Contact Section */}
-            <div className="hidden md:block mt-8 bg-gray-50 p-6 rounded-2xl border border-gray-200">
-              <h3 className="text-xs font-black uppercase tracking-widest text-gray-400 mb-6">Seller Details</h3>
+            {/* Contact Section */}
+            <div className="mt-8 bg-gray-50 p-6 rounded-2xl border border-gray-200">
+              <h3 className="text-xs font-black uppercase tracking-widest text-black mb-6">Seller Details</h3>
               <div className="flex items-center gap-4 mb-6">
                 <div className="w-12 h-12 bg-indigo-600 text-white font-black rounded-2xl flex items-center justify-center shadow-lg shadow-indigo-100">
                   {product.sellerName.substring(0, 1).toUpperCase()}
                 </div>
                 <div>
-                  <p className="font-bold text-gray-900">{product.sellerName}</p>
-                  <p className="text-[10px] text-indigo-500 font-bold uppercase tracking-widest">IIT Dharwad Student</p>
+                  <p className="font-bold text-black">{product.sellerName}</p>
+                  <p className="text-[10px] text-indigo-600 font-bold uppercase tracking-widest">IIT Dharwad Student</p>
                 </div>
               </div>
               
@@ -365,28 +370,51 @@ export default function ProductDetail() {
                 </button>
               ) : contactRevealed ? (
                 <div className="space-y-4">
-                  <div className="bg-white p-3 rounded-xl border border-gray-100 flex items-center gap-3">
-                    <Phone size={18} className="text-indigo-600" />
-                    <a href={`tel:${product.sellerPhone}`} className="text-sm font-bold text-gray-900 hover:underline">{product.sellerPhone}</a>
+                  <div className="bg-white p-3 rounded-xl border border-gray-100 flex items-center justify-between gap-3">
+                    <div className="flex items-center gap-3">
+                      <Phone size={18} className="text-indigo-600" />
+                      <a href={`tel:${product.sellerPhone}`} className="text-sm font-bold text-gray-900 hover:underline">{product.sellerPhone}</a>
+                    </div>
+                    <button 
+                      onClick={() => {
+                        navigator.clipboard.writeText(product.sellerPhone);
+                        toast.success('Phone copied to clipboard');
+                      }}
+                      className="text-gray-400 hover:text-indigo-600 p-1 transition"
+                    >
+                      <Copy size={16} />
+                    </button>
                   </div>
-                  <div className="bg-white p-3 rounded-xl border border-gray-100 flex items-center gap-3">
-                    <Mail size={18} className="text-indigo-600" />
-                    <a href={`mailto:${product.sellerEmail}`} className="text-sm font-bold text-gray-900 hover:underline">{product.sellerEmail}</a>
+                  <div className="bg-white p-3 rounded-xl border border-gray-100 flex items-center justify-between gap-3">
+                    <div className="flex items-center gap-3">
+                      <Mail size={18} className="text-indigo-600" />
+                      <a href={`mailto:${product.sellerEmail}`} className="text-sm font-bold text-gray-900 hover:underline">{product.sellerEmail}</a>
+                    </div>
+                    <button 
+                      onClick={() => {
+                        navigator.clipboard.writeText(product.sellerEmail);
+                        toast.success('Email copied to clipboard');
+                      }}
+                      className="text-gray-400 hover:text-indigo-600 p-1 transition"
+                    >
+                      <Copy size={16} />
+                    </button>
                   </div>
                 </div>
               ) : (
                 <button
                   onClick={handleRevealContact}
-                  className="w-full py-4 bg-indigo-600 text-white font-black uppercase tracking-widest text-xs rounded-xl shadow-lg shadow-indigo-100 hover:bg-indigo-700 hover:-translate-y-0.5 transition active:translate-y-0"
+                  disabled={revealing}
+                  className="w-full py-4 bg-indigo-600 text-white font-black uppercase tracking-widest text-xs rounded-xl shadow-lg shadow-indigo-100 hover:bg-indigo-700 hover:-translate-y-0.5 transition active:translate-y-0 disabled:bg-indigo-400 disabled:transform-none"
                 >
-                  Reveal Contact Information
+                  {revealing ? 'Loading...' : 'Reveal Contact Information'}
                 </button>
               )}
             </div>
 
           </div>
         </div>
-      </div>
+      </motion.div>
     </div>
   );
 }

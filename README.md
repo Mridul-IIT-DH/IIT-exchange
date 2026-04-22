@@ -1,89 +1,95 @@
-# IIT Exchange Marketplace Documentation
+# IIT Exchange Marketplace: Technical Documentation and Architectural Overview
 
-## Project Overview
-IIT Exchange is a secure, exclusive single-institution marketplace platform designed for the students, faculty, and staff of the Indian Institute of Technology (IIT) Dharwad. The platform facilitates the buying, selling, and exchanging of items (textbooks, electronics, furniture, cycles) within the campus environment. 
+## 1. Executive Summary
+IIT Exchange is a high-performance, secure, and exclusive institutional marketplace engineered specifically for the Indian Institute of Technology (IIT) Dharwad. The platform provides a centralized, authenticated infrastructure for the acquisition and disposal of academic and lifestyle assets among verified campus members. 
 
-A primary design constraint of this system is exclusivity: only users with a verified `@iitdh.ac.in` institutional email address can access the marketplace features, view contact details, or manage listings.
+The application is built to enterprise standards, prioritizing security, responsiveness, and a high-production value user experience.
 
-## Technical Architecture
+## 2. Core Technological Infrastructure
 
-### Core Stack
-- **Frontend**: React 19 with Vite, Tailwind CSS 4.0, and Motion (for UI transitions).
-- **Backend**: Node.js/Express server providing secure API endpoints for resource management.
-- **Database**: Google Cloud Firestore (NoSQL).
-- **Authentication**: Firebase Authentication (Google OAuth) with institutional domain enforcement.
-- **Storage**: Cloudinary (Image hosting and processing).
-- **State Management**: React Context API (Auth and User Profile).
+### 2.1 Frontend Architecture
+*   **Framework**: React 19 (Vite-powered Single Page Application).
+*   **Styling Engine**: Tailwind CSS 4.0 using a utility-first methodology with custom theme extensions for typography and color depth.
+*   **Animation System**: Motion (formerly Framer Motion) utilizing specialized spring physics to achieve "snappy" micro-interactions.
+*   **Standardization**: Strict TypeScript implementation for end-to-end type safety.
 
-### Repository Structure
-- `/src/pages`: Individual route components (Dashboard, Home, ProductDetail, Sell, Admin, etc.).
-- `/src/components`: Reusable UI modules and application layout.
-- `/src/contexts`: Global state providers, primarily `AuthContext.tsx`.
-- `/src/lib`: Logic for Firebase initialization and utility functions.
-- `/server.ts`: The primary backend entry point for development and production.
-- `/firestore.rules`: Security logic applied at the database layer.
+### 2.2 Backend and Data Services
+*   **Server Logic**: Node.js/Express environment serving dual roles as an API gateway and a production asset server.
+*   **Primary Database**: Google Cloud Firestore, utilizing a NoSQL document-oriented model for high scalability and real-time synchronization.
+*   **Administrative Logic**: Firebase Admin SDK integration for server-side authority and token verification.
+*   **Media Pipeline**: Cloudinary integration for resilient image storage, automated compression, and secure delivery.
 
-## Feature Set
+### 2.3 Identity Management
+*   **Gateway**: Firebase Authentication via Google OAuth.
+*   **Domain Restriction**: Programmatic enforcement of the `@iitdh.ac.in` domain at both the client-side (UI) and server-side (Database Rules and API).
+*   **Status Persistence**: User profiles are synchronized with Firestore to maintain contact eligibility and administrative privileges.
 
-### 1. Authentication and Onboarding
-- **Domain Enforcement**: Users are restricted to `@iitdh.ac.in` Google accounts. Unauthorized domains are automatically rejected and signed out.
-- **Profile Setup**: New users must provide a valid Indian phone number during onboarding to facilitate peer-to-peer communication.
-- **Role-Based Access**: The system differentiates between standard student users and administrators using email identifiers and Firestore collection logic.
+## 3. UI/UX Design Philosophy: "Enterprise Polish"
 
-### 2. Marketplace Management
-- **Listing Lifecycle**: Listings are active for a configurable duration (default 10 days).
-- **Rich Content**: Support for up to 5 images per listing, including automated server-side compression before storage.
-- **Metadata**: Detailed tracking of item age, price negotiability, and listing status (Active, Sold, Expired).
+### 3.1 Snappy Animation Physics
+The marketplace utilizes a customized spring configuration known as `snappySpring` `{ stiffness: 450, damping: 30, mass: 1 }`. This configuration is applied across all major transitions to ensure the interface feels energetic and immediate.
+*   **Navigation**: Dynamic, layout-persistent bottom navigation with tactile feedback.
+*   **Modals**: Perspective-aware entrance animations for authentication and administrative actions.
+*   **Content Loading**: Synchronized staggering for product galleries and listings.
 
-### 3. Image Optimization Flow
-- **Client-Side**: Initial compression using `browser-image-compression`.
-- **Server-Side API**: Images are sent to `/api/images/upload`. The server uses Multer to handle memory storage and the Cloudinary SDK for secure, signed uploads.
-- **Resource Cleanup**: Deleting a listing or an image triggers the removal of the corresponding asset from Cloudinary via the backend.
+### 3.2 Responsive Command Centricity
+The UI adapts vertically for mobile-first usage, reflecting that the majority of campus engagement occurs on mobile devices.
+*   **Adaptive Layouts**: Grid systems that transition from multi-column desktop views to single-column, high-density mobile cards.
+*   **Contextual Actions**: Persistent action bars for product details and dashboard management on smaller viewports.
 
-### 4. Administrative Console
-- **Platform Oversight**: Authorized admins can view all user profiles and marketplace listings.
-- **Moderation**: Admins have override permissions to edit or delete any listing on the platform.
-- **Analytics Dashboard**: Real-time stats on user growth, active listings, total views, and contact engagement.
+## 4. Operational Modules
 
-## Security Model
+### 4.1 Asset Creation (Sell Page)
+A high-production form logic that includes:
+*   Multi-image upload with client-side pre-processing.
+*   Mandatory architectural metadata (Item Age, Condition, Pricing Protocols).
+*   Real-time validation and failure handling.
 
-### 1. Frontend Guards
-Navigation is protected by the `AuthContext` and specialized redirects in the `Layout` component. User info is fetched lazily and updated using `onAuthStateChanged`.
+### 4.2 Management Command (Dashboard)
+A dual-interface dashboard allowing users to:
+*   Govern active and inactive listings.
+*   Monitor personal wishlist status.
+*   Optimize personal communication vectors (Phone/Email).
 
-### 2. Backend Security (server.ts)
-- **Token Verification**: Every `/api` request requires a Bearer token, which is verified using the `firebase-admin` SDK.
-- **Ownership Verification**: Before deleting image assets, the server verifies that the requesting user either owns the associated product listing or holds administrative permissions.
+### 4.3 Authority Control (Admin Console)
+An elevated oversight module for campus infrastructure managers:
+*   Real-time global synchronization of all active assets.
+*   User identity monitoring and listing count surveillance.
+*   Administrative override capabilities for data integrity.
 
-### 3. Database Security (firestore.rules)
-The marketplace implements granular Firestore Security Rules:
-- **Relational Integrity**: `exists()` and `get()` calls ensure that sellers are verified and that identity spoofing is impossible.
-- **Field-Level Validation**: Strict checks for string lengths, data types, and immutable fields.
-- **PII Isolation**: Contact details (Phone/Email) are only accessible to authenticated members of the IIT Dharwad community.
+## 5. Security Protocols
 
-## Development Setup
+### 5.1 Database Layer (firestore.rules)
+Hardened security rules implementing:
+*   **Path Variable Validation**: String size and regex verification for all document IDs.
+*   **Identity Integrity**: Verification that `sellerId` fields match the authenticated `request.auth.uid`.
+*   **Relational Verification**: Using `exists()` to prevent orphaned records and ensure parent-resource consistency.
+*   **PII Masking**: Logic-level isolation ensuring contact data is only exposed to authenticated, domain-verified users.
 
-### Installation
-1. Install dependencies:
-   ```bash
-   npm install
-   ```
+### 5.2 API Layer (server.ts)
+*   **Authenticated Proxies**: All Cloudinary write operations are proxied through a secure backend that verifies JWT tokens via Firebase Admin.
+*   **Ownership Check**: Server-side logic ensures that image deletion requests are only processed if the requester holds the appropriate permissions.
 
-### Environment Configuration
-The application requires several environment variables for full-stack functionality. Create a `.env` file based on `.env.example`:
+## 6. Implementation and Deployment
 
-- `CLOUDINARY_API_KEY`: API Key for Cloudinary.
-- `CLOUDINARY_API_SECRET`: API Secret for Cloudinary.
-- `VITE_CLOUDINARY_CLOUD_NAME`: Cloud name for the frontend Cloudinary configuration.
+### 6.1 Prerequisites
+*   Node.js (LTS version recommended).
+*   Firebase Project with Firestore and Auth enabled.
+*   Cloudinary Account for asset management.
 
-*Note: Firebase configuration is loaded from `firebase-applet-config.json`.*
+### 6.2 Environment Specification
+Variables required in the environment:
+*   `CLOUDINARY_API_KEY`: API credentials for the asset provider.
+*   `CLOUDINARY_API_SECRET`: Secret key for signed backend requests.
+*   `VITE_CLOUDINARY_CLOUD_NAME`: Public identifier for frontend asset delivery.
 
-### Available Scripts
-- `npm run dev`: Starts the Express server using `tsx`. The server integrates Vite as a middleware.
-- `npm run build`: Compiles the React application into the `dist/` directory.
-- `npm run start`: Executes the server in a production-ready environment.
-- `npm run lint`: Performs a TypeScript check (`tsc --noEmit`) to verify type safety.
+### 6.3 Operational Commands
+*   `npm run dev`: Executes the full-stack environment using `tsx`.
+*   `npm run build`: Generates optimized production assets in the `dist` directory.
+*   `npm run start`: Serves the production build and API endpoints.
+*   `npm run lint`: Verifies type integrity and syntactic consistency.
 
-## Deployment Guidelines
-- **Nginx/Reverse Proxy**: The server listens on port 3000. Ensure your reverse proxy routes all traffic to this port.
-- **CORS/Cookies**: The platform handles security through Bearer tokens in headers. Ensure your frontend client is configured to send these headers for all `/api/` calls.
-- **Firebase Deployment**: Use the Firebase CLI to deploy the `firestore.rules` file to ensure the database remains secure in production.
+## 7. Performance Optimization
+*   **Smooth Scroll Architecture**: Global CSS optimizations for hardware-accelerated scrolling.
+*   **Image Compression**: Multi-tier compression (Client -> Server -> CDN) to minimize data payloads on campus networks.
+*   **React Memoization**: Careful use of state and effect dependencies to prevent redundant render cycles.
