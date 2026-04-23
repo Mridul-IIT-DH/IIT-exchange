@@ -384,7 +384,7 @@ export default function Layout() {
                   className="w-full flex items-center justify-center gap-4 py-5 bg-google-blue text-white font-black uppercase tracking-widest text-[13px] rounded-2xl shadow-xl shadow-blue-200 hover:bg-blue-600 transition-all"
                 >
                   <LogIn size={20} />
-                  LOGIN WITH GOOGLE
+                  LOGIN WITH @iitdh.ac.in
                 </motion.button>
                 <motion.button
                   whileHover={{ scale: 1.01 }}

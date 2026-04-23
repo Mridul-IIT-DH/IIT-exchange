@@ -18,7 +18,7 @@ const __dirname = path.dirname(__filename);
 
 const upload = multer({ 
   storage: multer.memoryStorage(),
-  limits: { fileSize: 5 * 1024 * 1024 } // 5MB limit
+  limits: { fileSize: 10 * 1024 * 1024 } // Increased to 10MB for enterprise flexibility
 });
 
 // Enterprise Security: Initialize Firebase Admin for authenticating backend requests.

@@ -250,7 +250,7 @@ export default function ProductDetail() {
                 >
                   <span className={`px-4 py-1.5 text-[10px] font-black uppercase tracking-widest rounded-full italic border ${
                     product.status === 'active' ? 'bg-green-50 text-google-green border-green-100' :
-                    product.status === 'sold' ? 'bg-blue-50 text-google-blue border-blue-100' : 'bg-red-50 text-google-red border-red-100'
+                    product.status === 'sold' ? 'bg-red-50 text-google-red border-red-100' : 'bg-amber-50 text-amber-600 border-amber-100'
                   }`}>
                     {product.status}
                   </span>

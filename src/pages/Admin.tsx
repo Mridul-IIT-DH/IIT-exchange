@@ -47,6 +47,8 @@ export default function Admin() {
   });
 
   const [searchQuery, setSearchQuery] = useState('');
+  const [listingToDelete, setListingToDelete] = useState<{id: string, images?: string[]} | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   useEffect(() => {
     if (!authLoading && !isAdmin) {
@@ -136,24 +138,18 @@ export default function Admin() {
     if (isAdmin) fetchData();
   }, [isAdmin, activeTab]);
 
-  const handleDeleteListing = async (id: string, images?: string[]) => {
-    if (!window.confirm("Are you sure you want to delete this listing permanently?")) return;
+  const handleDeleteListing = async () => {
+    if (!listingToDelete) return;
     
+    setIsDeleting(true);
     try {
-      // Delete images from Cloudinary via server
-      if (images && images.length > 0) {
+      console.log(`Admin [Delete]: Initiating deletion for listing ${listingToDelete.id}`);
+      
+      // 1. Delete images from Cloudinary via server (Non-blocking)
+      if (listingToDelete.images && listingToDelete.images.length > 0) {
         const idToken = await user?.getIdToken();
-        for (const imageUrl of images) {
+        for (const imageUrl of listingToDelete.images) {
           try {
-            await fetch('/api/images/upload', { // Re-using delete endpoint is cleaner but I don't have it explicitly shown in standard way
-                method: 'POST',
-                headers: { 
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${idToken}`
-                },
-                body: JSON.stringify({ imageUrl, action: 'delete' }) // The server.ts has a legacy delete but /api/images/delete is standard
-            });
-            // Actually server.ts has /api/images/delete
             await fetch('/api/images/delete', {
                 method: 'POST',
                 headers: { 
@@ -163,15 +159,22 @@ export default function Admin() {
                 body: JSON.stringify({ imageUrl })
             });
           } catch (err) {
-            console.error("Cloudinary delete error:", err);
+            console.warn("Optional: Cloudinary cleanup failed for image:", imageUrl, err);
           }
         }
       }
-      await deleteDoc(doc(db, 'products', id));
+
+      // 2. Delete document from Firestore (The main event)
+      await deleteDoc(doc(db, 'products', listingToDelete.id));
+      
       toast.success("Listing deleted successfully");
+      setListingToDelete(null);
       fetchData();
     } catch (error: any) {
+      console.error("Admin [Delete]: Critical failure", error);
       toast.error("Delete failed: " + error.message);
+    } finally {
+      setIsDeleting(false);
     }
   };
 
@@ -360,7 +363,8 @@ export default function Admin() {
                       <td className="px-6 py-4">
                         <span className={`px-2 py-1 rounded-md text-[10px] font-black uppercase tracking-wider ${
                           l.status === 'active' ? 'bg-green-50 text-google-green border border-green-100' : 
-                          l.status === 'sold' ? 'bg-blue-50 text-google-blue border border-blue-100' : 'bg-gray-100 text-gray-700'
+                          l.status === 'sold' ? 'bg-red-50 text-google-red border border-red-100' : 
+                          'bg-amber-50 text-amber-600 border border-amber-100'
                         }`}>
                           {l.status}
                         </span>
@@ -394,7 +398,7 @@ export default function Admin() {
                             </button>
                           )}
                           <button 
-                            onClick={() => handleDeleteListing(l.id, l.images)}
+                            onClick={() => setListingToDelete({ id: l.id, images: l.images })}
                             className="p-2 bg-red-50 text-google-red hover:bg-red-100 rounded-lg transition-all active:scale-90 border border-red-100"
                             title="Delete Listing"
                           >
@@ -424,7 +428,8 @@ export default function Admin() {
                         <div className="mt-2 flex items-center gap-2">
                            <span className={`px-2 py-0.5 rounded-md text-[8px] font-black uppercase tracking-wider ${
                             l.status === 'active' ? 'bg-green-50 text-google-green border border-green-100' : 
-                            l.status === 'sold' ? 'bg-blue-50 text-google-blue border border-blue-100' : 'bg-gray-100 text-gray-700'
+                            l.status === 'sold' ? 'bg-red-50 text-google-red border border-red-100' : 
+                            'bg-amber-50 text-amber-600 border border-amber-100'
                           }`}>
                             {l.status}
                           </span>
@@ -451,7 +456,7 @@ export default function Admin() {
                           <Edit3 size={14} />
                         </button>
                         <button 
-                          onClick={() => handleDeleteListing(l.id, l.images)}
+                          onClick={() => setListingToDelete({ id: l.id, images: l.images })}
                           className="p-2 bg-red-50 text-google-red rounded-lg"
                         >
                           <Trash2 size={14} />
@@ -540,6 +545,53 @@ export default function Admin() {
           <p className="text-xs font-medium opacity-80">Deletion actions are irreversible and will immediately remove data from production storage. Use with absolute caution.</p>
         </div>
       </div>
+
+      <AnimatePresence>
+        {listingToDelete && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => !isDeleting && setListingToDelete(null)}
+              className="absolute inset-0 bg-black/60 backdrop-blur-sm"
+            />
+            <motion.div
+              initial={{ scale: 0.9, opacity: 0, y: 20 }}
+              animate={{ scale: 1, opacity: 1, y: 0 }}
+              exit={{ scale: 0.9, opacity: 0, y: 20 }}
+              transition={snappySpring}
+              className="relative w-full max-w-sm bg-white rounded-[40px] shadow-2xl overflow-hidden"
+            >
+              <div className="p-10 text-center">
+                <div className="mx-auto w-16 h-16 bg-red-50 rounded-3xl flex items-center justify-center mb-6">
+                  <Trash2 size={32} className="text-google-red" />
+                </div>
+                <h3 className="text-xl font-black text-black uppercase tracking-tight">Confirm Purge</h3>
+                <p className="text-gray-600 font-bold text-sm mt-2">
+                  This action is irreversible. All listing data and linked assets will be permanently removed.
+                </p>
+                <div className="flex flex-col gap-3 mt-10">
+                  <button
+                    disabled={isDeleting}
+                    onClick={handleDeleteListing}
+                    className="w-full py-4 bg-google-red text-white font-black uppercase tracking-widest text-xs rounded-2xl shadow-xl shadow-red-100 hover:bg-red-700 transition disabled:bg-gray-300 disabled:shadow-none"
+                  >
+                    {isDeleting ? "PURGING..." : "DELETE PERMANENTLY"}
+                  </button>
+                  <button
+                    disabled={isDeleting}
+                    onClick={() => setListingToDelete(null)}
+                    className="w-full py-4 bg-white text-gray-400 font-black uppercase tracking-widest text-xs rounded-2xl hover:text-black transition disabled:opacity-50"
+                  >
+                    CANCEL
+                  </button>
+                </div>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }

@@ -221,15 +221,19 @@ export default function Sell() {
             }
 
             const text = await response.text();
+            
+            // Platform Identity/Security Bridge Check
+            if (text.trim().startsWith('<') || text.includes('Cookie check') || text.includes('Action required')) {
+              console.error("Platform level interception detected:", text);
+              throw new Error("Security session invalidated by platform. Please refresh the page or click 'Authenticate' in the preview window to continue.");
+            }
+
             try {
-               if (text.trim().startsWith('<')) {
-                  throw new Error("Received security page instead of data. Try smaller files or refresh.");
-               }
                const data = JSON.parse(text);
                newlyUploadedUrls.push(data.secure_url);
             } catch (jsonErr) {
-               console.error("Invalid Response body:", text);
-               throw new Error("Network interruption. Try reducing image quality or quantity.");
+               console.error("JSON Parse Failure. Response was:", text);
+               throw new Error("Server communication failure. The response was not valid data. Try a smaller image.");
             }
             toast.dismiss(`process-${file.name}`);
           }

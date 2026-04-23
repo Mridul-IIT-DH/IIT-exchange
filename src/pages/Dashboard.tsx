@@ -443,7 +443,7 @@ export default function Dashboard() {
                               <span className={cn(
                                 "px-4 py-1.5 text-[9px] font-black uppercase tracking-widest rounded-full shadow-lg backdrop-blur-md border",
                                 product.status === 'active' ? 'bg-google-green border-white/40 text-white' : 
-                                product.status === 'sold' ? 'bg-google-blue border-white/40 text-white' : 'bg-gray-500/80 border-white/40 text-white'
+                                product.status === 'sold' ? 'bg-google-red border-white/40 text-white' : 'bg-amber-500/80 border-white/40 text-white'
                               )}>
                                 {product.status}
                               </span>
