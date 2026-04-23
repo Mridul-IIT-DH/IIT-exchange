@@ -131,7 +131,7 @@ export default function Home() {
                   onClick={() => signIn()}
                   className="px-10 py-5 bg-white border-2 border-google-blue text-google-blue font-black uppercase tracking-widest text-xs rounded-2xl hover:bg-blue-50 transition-all"
                 >
-                  Login with @iitdh.ac.in
+                  Join Network
                 </button>
               )}
             </div>
