@@ -286,8 +286,10 @@ export default function Home() {
                       )}
                     </div>
                     <div className="mt-auto pt-3 sm:pt-4 flex justify-between items-center text-[10px] sm:text-xs text-gray-600 font-medium">
-                      <span className="line-clamp-1 max-w-[60%]">{product.sellerName}</span>
-                      <span className="shrink-0">{formatDistanceToNow(product.createdAt, { addSuffix: true }).replace('about ', '')}</span>
+                      <span className="truncate max-w-[55%]">
+                        {product.sellerName.length > 15 ? `${product.sellerName.substring(0, 12)}...` : product.sellerName}
+                      </span>
+                      <span className="shrink-0 ml-2">{formatDistanceToNow(product.createdAt, { addSuffix: true }).replace('about ', '')}</span>
                     </div>
                   </div>
                 </Link>
