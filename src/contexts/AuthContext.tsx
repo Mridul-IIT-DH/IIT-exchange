@@ -66,69 +66,86 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
 
   useEffect(() => {
-    // 1. Force local persistence to ensure Render.com handles sessions correctly
+    let isMounted = true;
+    
+    // 1. Force local persistence
     setPersistence(auth, browserLocalPersistence).catch(console.error);
 
-    // 2. Resolve any pending redirects (Crucial for Render.com reliability)
-    getRedirectResult(auth).then(async (result) => {
-      if (result && result.user) {
-        console.log("Redirect login success:", result.user.email);
-        if (result.user.email?.endsWith('@iitdh.ac.in')) {
-          setUser(result.user);
-          await fetchProfile(result.user.uid, result.user.email);
-          toast.success('Successfully logged in via redirect!');
-        } else {
-          await auth.signOut();
-          toast.error("Only @iitdh.ac.in permitted.");
+    const initAuth = async () => {
+      console.log("Auth System: Initializing...");
+      try {
+        // 2. Resolve any pending redirects (Crucial for Render.com)
+        const result = await getRedirectResult(auth);
+        
+        if (result && result.user && isMounted) {
+          console.log("Auth System: Successfully recovered login from redirect", result.user.email);
+          if (result.user.email?.endsWith('@iitdh.ac.in')) {
+            setUser(result.user);
+            await fetchProfile(result.user.uid, result.user.email);
+            toast.success('Successfully logged in!');
+          } else {
+            await auth.signOut();
+            toast.error("Access restricted: @iitdh.ac.in only.");
+          }
+        }
+      } catch (error: any) {
+        console.error("Auth System: Redirect check error", error);
+        if (error.code === 'auth/internal-error' || error.code === 'auth/network-request-failed') {
+          toast.error("Security block: Please check browser cookie settings.");
         }
       }
-    }).catch((error) => {
-      console.error("Redirect resolution error:", error);
-      if (error.code !== 'auth/network-request-failed') {
-        // Only show if it's not a generic networking glitch
-        toast.error("Authentication interrupted. Please try again.");
-      }
-    });
 
-    const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
-      console.log("Auth state changed:", firebaseUser?.email || "No user");
-      if (firebaseUser) {
-        if (firebaseUser.email?.endsWith('@iitdh.ac.in')) {
-          setUser(firebaseUser);
-          await fetchProfile(firebaseUser.uid, firebaseUser.email);
+      // 3. Setup listener for ongoing session changes
+      const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
+        if (!isMounted) return;
+        
+        console.log("Auth System: State update -", firebaseUser ? firebaseUser.email : "No user");
+        
+        if (firebaseUser) {
+          if (firebaseUser.email?.endsWith('@iitdh.ac.in')) {
+            setUser(firebaseUser);
+            await fetchProfile(firebaseUser.uid, firebaseUser.email);
+          } else {
+            await auth.signOut();
+            setUser(null);
+            setProfile(null);
+          }
         } else {
-          await auth.signOut();
           setUser(null);
           setProfile(null);
           setIsAdmin(false);
-          toast.error("Please use your @iitdh.ac.in account.");
         }
-      } else {
-        setUser(null);
-        setProfile(null);
-        setIsAdmin(false);
-      }
-      setLoading(false);
-    });
+        setLoading(false);
+      });
 
-    return () => unsubscribe();
+      return unsubscribe;
+    };
+
+    const cleanupPromise = initAuth();
+
+    return () => {
+      isMounted = false;
+      cleanupPromise.then(unsubscribe => unsubscribe && typeof unsubscribe === 'function' && unsubscribe());
+    };
   }, []);
 
   const signIn = async () => {
     try {
       setLoading(true);
       
-      // LOGIC: Use Redirect for custom Render domains to bypass 3rd-party cookie blocking.
-      // Use Popup for development domains for speed.
-      const isCustomDomain = window.location.hostname.includes('render.com') || 
-                             !window.location.hostname.includes('asia-east1.run.app') && 
-                             window.location.hostname !== 'localhost';
+      // LOGIC: Use Redirect for custom domains (like onrender.com) to bypass 
+      // strict browser cookie/opener policies.
+      const hostname = window.location.hostname;
+      const isCustomDomain = hostname.includes('onrender.com') || 
+                             hostname.includes('render.com') ||
+                             (!hostname.includes('asia-east1.run.app') && hostname !== 'localhost');
 
       if (isCustomDomain) {
-        console.log("Using Redirect flow for production reliability.");
+        console.log("Auth System: Production domain detected. Forcing redirect for reliability.");
         await signInWithRedirect(auth, googleProvider);
-        // Page will redirect, no code below this will execute
+        return;
       } else {
+        console.log("Auth System: Development domain detected. Using popup.");
         const result = await signInWithPopup(auth, googleProvider);
         if (!result.user.email?.endsWith('@iitdh.ac.in')) {
           await auth.signOut();
