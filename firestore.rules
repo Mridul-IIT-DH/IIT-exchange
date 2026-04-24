@@ -16,11 +16,12 @@ service cloud.firestore {
       );
     }
 
-    // Student: Mandatory IITDH domain check
-    // Relaxed email_verified for initial login troubleshooting
+    // Student: Mandatory IITDH domain check + account verification
+    // This is the core 'Enterprise' gate for campus security.
     function isIITStudent() {
       return isSignedIn() && 
-             request.auth.token.email.lower().matches('.+@iitdh\\.ac\\.in$');
+             request.auth.token.email.lower().matches('.+@iitdh\\.ac\\.in$') &&
+             request.auth.token.email_verified == true;
     }
 
     // Data Flow Helpers
