@@ -88,44 +88,56 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
 
   useEffect(() => {
-    console.log("AuthContext: System Boot - Domain:", window.location.hostname);
+    console.log("AuthContext: Bootstrap sequence started on domain:", window.location.hostname);
     
-    // Flag to prevent race condition between onAuthStateChanged and getRedirectResult
+    let isMounted = true;
     let redirectCheckInProgress = true;
 
     const initAuth = async () => {
       try {
-        // 1. Force Persistence FIRST
+        setLoading(true);
+        console.log("AuthContext: Setting persistence: LOCAL");
         await setPersistence(auth, browserLocalPersistence);
-        console.log("AuthContext: Persistence confirmed: LOCAL");
 
-        // 2. Resolve any pending Redirect Results
-        console.log("AuthContext: Checking for redirect results...");
+        // Debug info for the user
+        const isRender = window.location.hostname.includes('render.com');
+        if (isRender) {
+          console.warn("AuthContext: Detected Render.com domain. If login fails, check for third-party cookie blocking.");
+        }
+
+        console.log("AuthContext: Checking for Redirect Result...");
         const result = await getRedirectResult(auth);
         
-        if (result) {
-          console.log("AuthContext: Redirect result captured for:", result.user.email, "UID:", result.user.uid);
+        if (result && isMounted) {
+          console.log("AuthContext: Redirect SUCCESS. User:", result.user.email);
           const success = await handleSignInResult(result.user);
           if (success) {
             setUser(result.user);
             await fetchProfile(result.user.uid, result.user.email!);
           }
-        } else {
+        } else if (isMounted) {
           console.log("AuthContext: No pending redirect result found.");
         }
       } catch (err: any) {
-        console.error("AuthContext: Bootstrap Error (Code/Msg):", err.code, "|", err.message);
+        console.error("AuthContext: Bootstrap Error (Code/Message):", err.code, "|", err.message);
         
-        if (err.code === 'auth/network-request-failed' || err.code === 'auth/internal-error') {
-          console.error("AuthContext: Critical connectivity or iframe restriction detected.");
-          toast.error("Auth blocked by browser tracking protection. If you are on Render.com, please ensure 'iit-exchange.onrender.com' is an Authorized Domain in Firebase.", { duration: 10000 });
+        if (isMounted) {
+          if (err.code === 'auth/network-request-failed') {
+            toast.error("Network Error: Firebase cannot reach authentication servers. Verify your 'Authorized Domains'.", { duration: 6000 });
+          } else if (err.code === 'auth/internal-error') {
+            toast.error("Internal Auth Error: Often caused by browser extensions or missing 'Authorized Domains'.", { duration: 6000 });
+          }
         }
       } finally {
-        console.log("AuthContext: Bootstrap sequence finished.");
-        redirectCheckInProgress = false;
-        // Check if we already have a user from onAuthStateChanged
-        if (!auth.currentUser) {
-          setLoading(false);
+        if (isMounted) {
+          redirectCheckInProgress = false;
+          // Only stop loading if we haven't already confirmed a user via onAuthStateChanged
+          if (!auth.currentUser) {
+            console.log("AuthContext: Bootstrap complete - No user found yet.");
+            setLoading(false);
+          } else {
+            console.log("AuthContext: Bootstrap complete - User already set via listener.");
+          }
         }
       }
     };
@@ -133,21 +145,22 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     initAuth();
 
     const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
-      console.log("AuthContext: State sync -", firebaseUser ? `User: ${firebaseUser.email}` : "No User");
+      console.log("AuthContext: State Sync Event - User:", firebaseUser ? firebaseUser.email : "NULL");
       
+      if (!isMounted) return;
+
       if (firebaseUser) {
         if (firebaseUser.email?.endsWith('@iitdh.ac.in')) {
           setUser(firebaseUser);
           await fetchProfile(firebaseUser.uid, firebaseUser.email);
         } else {
-          console.warn("AuthContext: Invalid domain detection - signing out");
+          console.warn("AuthContext: Non-IITDH account detected. Blocking session.");
           await auth.signOut();
           setUser(null);
           setProfile(null);
-          setIsAdmin(false);
+          toast.error("Please use your @iitdh.ac.in account.");
         }
       } else {
-        // Only clear if we aren't currently waiting for a redirect result
         if (!redirectCheckInProgress) {
           setUser(null);
           setProfile(null);
@@ -157,7 +170,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setLoading(false);
     });
 
-    return unsubscribe;
+    return () => {
+      isMounted = false;
+      unsubscribe();
+    };
   }, []);
 
   const signIn = async () => {
