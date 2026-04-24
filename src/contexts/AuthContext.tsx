@@ -99,24 +99,34 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         await setPersistence(auth, browserLocalPersistence);
         console.log("AuthContext: Persistence confirmed: LOCAL");
 
-        // 2. Resolve any pending Redirect Results (Essential for cross-domain flows)
+        // 2. Resolve any pending Redirect Results
+        console.log("AuthContext: Checking for redirect results...");
         const result = await getRedirectResult(auth);
+        
         if (result) {
-          console.log("AuthContext: Redirect result captured for:", result.user.email);
-          await handleSignInResult(result.user);
+          console.log("AuthContext: Redirect result captured for:", result.user.email, "UID:", result.user.uid);
+          const success = await handleSignInResult(result.user);
+          if (success) {
+            setUser(result.user);
+            await fetchProfile(result.user.uid, result.user.email!);
+          }
         } else {
           console.log("AuthContext: No pending redirect result found.");
         }
       } catch (err: any) {
-        console.error("AuthContext: Bootstrap Error:", err.code, err.message);
+        console.error("AuthContext: Bootstrap Error (Code/Msg):", err.code, "|", err.message);
         
-        // Specific guidance for Render.com users
         if (err.code === 'auth/network-request-failed' || err.code === 'auth/internal-error') {
+          console.error("AuthContext: Critical connectivity or iframe restriction detected.");
           toast.error("Auth blocked by browser tracking protection. If you are on Render.com, please ensure 'iit-exchange.onrender.com' is an Authorized Domain in Firebase.", { duration: 10000 });
         }
       } finally {
+        console.log("AuthContext: Bootstrap sequence finished.");
         redirectCheckInProgress = false;
-        // If onAuthStateChanged already fired and set user to null, we might need to stop loading now
+        // Check if we already have a user from onAuthStateChanged
+        if (!auth.currentUser) {
+          setLoading(false);
+        }
       }
     };
 
