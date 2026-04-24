@@ -67,65 +67,65 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     let isMounted = true;
-    
-    // 1. Force local persistence
-    setPersistence(auth, browserLocalPersistence).catch(console.error);
+    let unsubscribe: (() => void) | null = null;
 
-    const initAuth = async () => {
-      console.log("Auth System: Initializing...");
+    const init = async () => {
+      console.log("Auth System: Booting on", window.location.hostname);
+      
       try {
-        // 2. Resolve any pending redirects (Crucial for Render.com)
-        const result = await getRedirectResult(auth);
+        // 1. Resolve Persistence
+        await setPersistence(auth, browserLocalPersistence);
         
+        // 2. Resolve Redirect Result (Crucial for Render.com)
+        const result = await getRedirectResult(auth);
         if (result && result.user && isMounted) {
-          console.log("Auth System: Successfully recovered login from redirect", result.user.email);
+          console.log("Auth System: Redirect result resolved", result.user.email);
           if (result.user.email?.endsWith('@iitdh.ac.in')) {
             setUser(result.user);
             await fetchProfile(result.user.uid, result.user.email);
             toast.success('Successfully logged in!');
           } else {
             await auth.signOut();
-            toast.error("Access restricted: @iitdh.ac.in only.");
+            toast.error("Domain @iitdh.ac.in required.");
           }
         }
       } catch (error: any) {
-        console.error("Auth System: Redirect check error", error);
-        if (error.code === 'auth/internal-error' || error.code === 'auth/network-request-failed') {
-          toast.error("Security block: Please check browser cookie settings.");
+        console.error("Auth System: Bootstrap Error", error.code, error.message);
+        if (isMounted && (error.code === 'auth/internal-error' || error.code === 'auth/network-request-failed')) {
+          toast.error("Auth helper: Please ensure 'iit-exchange.onrender.com' is an Authorized Domain in Firebase.");
+        }
+      } finally {
+        if (isMounted) {
+          // 3. Setup persistent listener
+          unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
+            if (!isMounted) return;
+            console.log("Auth System: State event", firebaseUser ? firebaseUser.email : "No user");
+            
+            if (firebaseUser) {
+              if (firebaseUser.email?.endsWith('@iitdh.ac.in')) {
+                setUser(firebaseUser);
+                await fetchProfile(firebaseUser.uid, firebaseUser.email);
+              } else {
+                await auth.signOut();
+                setUser(null);
+                setProfile(null);
+              }
+            } else {
+              setUser(null);
+              setProfile(null);
+              setIsAdmin(false);
+            }
+            setLoading(false);
+          });
         }
       }
-
-      // 3. Setup listener for ongoing session changes
-      const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
-        if (!isMounted) return;
-        
-        console.log("Auth System: State update -", firebaseUser ? firebaseUser.email : "No user");
-        
-        if (firebaseUser) {
-          if (firebaseUser.email?.endsWith('@iitdh.ac.in')) {
-            setUser(firebaseUser);
-            await fetchProfile(firebaseUser.uid, firebaseUser.email);
-          } else {
-            await auth.signOut();
-            setUser(null);
-            setProfile(null);
-          }
-        } else {
-          setUser(null);
-          setProfile(null);
-          setIsAdmin(false);
-        }
-        setLoading(false);
-      });
-
-      return unsubscribe;
     };
 
-    const cleanupPromise = initAuth();
+    init();
 
     return () => {
       isMounted = false;
-      cleanupPromise.then(unsubscribe => unsubscribe && typeof unsubscribe === 'function' && unsubscribe());
+      if (unsubscribe) unsubscribe();
     };
   }, []);
 
