@@ -2,12 +2,8 @@ import React, { createContext, useContext, useEffect, useState } from 'react';
 import { 
   User, 
   signInWithPopup, 
-  signInWithRedirect,
-  getRedirectResult,
   signOut, 
-  onAuthStateChanged,
-  setPersistence,
-  browserLocalPersistence
+  onAuthStateChanged 
 } from 'firebase/auth';
 import { doc, getDoc } from 'firebase/firestore';
 import { auth, googleProvider, db } from '../lib/firebase';
@@ -51,7 +47,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         setProfile(null);
       }
 
-      // Admin check
+      // Check if user is admin
       if (email === 'cs24mt002@iitdh.ac.in') {
         setIsAdmin(true);
       } else {
@@ -66,112 +62,59 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
 
   useEffect(() => {
-    let isMounted = true;
-    let unsubscribe: (() => void) | null = null;
-
-    const init = async () => {
-      console.log("Auth System: Booting on", window.location.hostname);
+    // Initializing the auth state listener
+    const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
+      console.log("Auth System: State Change", firebaseUser ? firebaseUser.email : "No User");
       
-      try {
-        // 1. Resolve Persistence
-        await setPersistence(auth, browserLocalPersistence);
-        
-        // 2. Resolve Redirect Result (Crucial for Render.com)
-        const result = await getRedirectResult(auth);
-        if (result && result.user && isMounted) {
-          console.log("Auth System: Redirect result resolved", result.user.email);
-          if (result.user.email?.endsWith('@iitdh.ac.in')) {
-            setUser(result.user);
-            await fetchProfile(result.user.uid, result.user.email);
-            toast.success('Successfully logged in!');
-          } else {
-            await auth.signOut();
-            toast.error("Domain @iitdh.ac.in required.");
-          }
+      if (firebaseUser) {
+        if (firebaseUser.email?.endsWith('@iitdh.ac.in')) {
+          setUser(firebaseUser);
+          await fetchProfile(firebaseUser.uid, firebaseUser.email);
+        } else {
+          // Force sign out if unauthorized domain somehow got through (e.g. cached session redirect)
+          await auth.signOut();
+          setUser(null);
+          setProfile(null);
+          setIsAdmin(false);
+          toast.error("Please use your @iitdh.ac.in account.");
         }
-      } catch (error: any) {
-        console.error("Auth System: Bootstrap Error", error.code, error.message);
-        if (isMounted && (error.code === 'auth/internal-error' || error.code === 'auth/network-request-failed')) {
-          toast.error("Auth helper: Please ensure 'iit-exchange.onrender.com' is an Authorized Domain in Firebase.");
-        }
-      } finally {
-        if (isMounted) {
-          // 3. Setup persistent listener
-          unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
-            if (!isMounted) return;
-            console.log("Auth System: State event", firebaseUser ? firebaseUser.email : "No user");
-            
-            if (firebaseUser) {
-              if (firebaseUser.email?.endsWith('@iitdh.ac.in')) {
-                setUser(firebaseUser);
-                await fetchProfile(firebaseUser.uid, firebaseUser.email);
-              } else {
-                await auth.signOut();
-                setUser(null);
-                setProfile(null);
-              }
-            } else {
-              setUser(null);
-              setProfile(null);
-              setIsAdmin(false);
-            }
-            setLoading(false);
-          });
-        }
+      } else {
+        setUser(null);
+        setProfile(null);
+        setIsAdmin(false);
       }
-    };
+      setLoading(false);
+    });
 
-    init();
-
-    return () => {
-      isMounted = false;
-      if (unsubscribe) unsubscribe();
-    };
+    return () => unsubscribe();
   }, []);
 
   const signIn = async () => {
     try {
-      setLoading(true);
+      // Note: We avoid setting global loading state here to prevent "white screen" during popup
+      const result = await signInWithPopup(auth, googleProvider);
       
-      // LOGIC: Use Redirect for custom domains (like onrender.com) to bypass 
-      // strict browser cookie/opener policies.
-      const hostname = window.location.hostname;
-      const isCustomDomain = hostname.includes('onrender.com') || 
-                             hostname.includes('render.com') ||
-                             (!hostname.includes('asia-east1.run.app') && hostname !== 'localhost');
-
-      if (isCustomDomain) {
-        console.log("Auth System: Production domain detected. Forcing redirect for reliability.");
-        await signInWithRedirect(auth, googleProvider);
+      if (!result.user.email?.endsWith('@iitdh.ac.in')) {
+        await auth.signOut();
+        toast.error('Only @iitdh.ac.in emails are allowed.');
         return;
-      } else {
-        console.log("Auth System: Development domain detected. Using popup.");
-        const result = await signInWithPopup(auth, googleProvider);
-        if (!result.user.email?.endsWith('@iitdh.ac.in')) {
-          await auth.signOut();
-          toast.error('Only @iitdh.ac.in emails are allowed.');
-          return;
-        }
-        toast.success('Successfully logged in!');
       }
+      
+      toast.success('Successfully logged in!');
     } catch (error: any) {
-      console.error("Login error:", error);
-      setLoading(false);
+      console.error("Login Error:", error);
       
-      if (error.code === 'auth/popup-closed-by-user') return;
-      
-      // Fallback: If Popup fails, attempt Redirect automatically
-      if (error.code === 'auth/internal-error' || error.code === 'auth/network-request-failed') {
-        try {
-          console.log("Popup blocked or failed, attempting redirect fallback...");
-          await signInWithRedirect(auth, googleProvider);
-        } catch (redirectErr) {
-          toast.error('Authentication system blocked. Please check your browser cookie settings.');
-        }
+      if (error.code === 'auth/popup-closed-by-user' || error.code === 'auth/cancelled-popup-request') {
         return;
       }
       
-      toast.error(`Login failed: ${error.message}`);
+      if (error.code === 'auth/internal-error' && error.message?.includes('popup')) {
+        toast.error('Popup blocked. Please check your browser settings.');
+      } else if (error.code === 'auth/network-request-failed') {
+        toast.error('Connection failed. Please check your internet or domain authorization.');
+      } else {
+        toast.error(`Login failed: ${error.message}`);
+      }
     }
   };
 
