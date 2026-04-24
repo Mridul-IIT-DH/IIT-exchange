@@ -2,12 +2,8 @@ import React, { createContext, useContext, useEffect, useState } from 'react';
 import { 
   User, 
   signInWithPopup, 
-  signInWithRedirect,
-  getRedirectResult,
   signOut, 
-  onAuthStateChanged,
-  setPersistence,
-  browserLocalPersistence
+  onAuthStateChanged 
 } from 'firebase/auth';
 import { doc, getDoc } from 'firebase/firestore';
 import { auth, googleProvider, db } from '../lib/firebase';
@@ -66,107 +62,50 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
 
   useEffect(() => {
-    let isMounted = true;
-    
-    const initializeAuth = async () => {
-      console.log("Auth System: Initializing on", window.location.hostname);
+    const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
+      console.log("Auth System: State Change", firebaseUser ? firebaseUser.email : "No User");
       
-      try {
-        // Resolve any pending redirect results first (crucial for custom domains)
-        const result = await getRedirectResult(auth);
-        if (result && result.user && isMounted) {
-          console.log("Auth System: Successfully resolved redirect login", result.user.email);
-          if (result.user.email?.endsWith('@iitdh.ac.in')) {
-            setUser(result.user);
-            await fetchProfile(result.user.uid, result.user.email);
-            toast.success('Successfully logged in!');
-          } else {
-            await auth.signOut();
-            toast.error("IITDH email required.");
-          }
-        }
-      } catch (error: any) {
-        console.error("Auth System: Redirect handle error", error.code, error.message);
-        // auth/account-exists-with-different-credential etc are common here
-      }
-
-      // Listen for authenticated state changes
-      const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
-        if (!isMounted) return;
-        
-        console.log("Auth System: session status -", firebaseUser ? firebaseUser.email : "No User");
-        
-        if (firebaseUser) {
-          if (firebaseUser.email?.endsWith('@iitdh.ac.in')) {
-            setUser(firebaseUser);
-            await fetchProfile(firebaseUser.uid, firebaseUser.email);
-          } else {
-            await auth.signOut();
-            setUser(null);
-            setProfile(null);
-            setIsAdmin(false);
-          }
+      if (firebaseUser) {
+        if (firebaseUser.email?.endsWith('@iitdh.ac.in')) {
+          setUser(firebaseUser);
+          await fetchProfile(firebaseUser.uid, firebaseUser.email);
         } else {
+          await auth.signOut();
           setUser(null);
           setProfile(null);
           setIsAdmin(false);
+          toast.error("Please use your @iitdh.ac.in account.");
         }
-        setLoading(false);
-      });
+      } else {
+        setUser(null);
+        setProfile(null);
+        setIsAdmin(false);
+      }
+      setLoading(false);
+    });
 
-      return unsubscribe;
-    };
-
-    const cleanup = initializeAuth();
-
-    return () => {
-      isMounted = false;
-      cleanup.then(unsub => unsub && typeof unsub === 'function' && unsub());
-    };
+    return unsubscribe;
   }, []);
 
   const signIn = async () => {
     try {
-      setLoading(true);
+      const result = await signInWithPopup(auth, googleProvider);
       
-      const hostname = window.location.hostname;
-      // Use Redirect for Render custom domains, Popup for local/dev
-      const isCustomDomain = hostname.includes('onrender.com') || 
-                             (hostname !== 'localhost' && !hostname.includes('.run.app'));
-
-      if (isCustomDomain) {
-        console.log("Auth System: Using Redirect flow for reliability.");
-        await signInWithRedirect(auth, googleProvider);
-        // Page will redirect, execution stops here
-      } else {
-        const result = await signInWithPopup(auth, googleProvider);
-        if (!result.user.email?.endsWith('@iitdh.ac.in')) {
-          await auth.signOut();
-          toast.error('Only @iitdh.ac.in emails are allowed.');
-          return;
-        }
-        toast.success('Successfully logged in!');
+      if (!result.user.email?.endsWith('@iitdh.ac.in')) {
+        await auth.signOut();
+        toast.error('Only @iitdh.ac.in emails are allowed.');
+        return;
       }
+      
+      toast.success('Successfully logged in!');
     } catch (error: any) {
       console.error("Login Error:", error);
-      setLoading(false);
       
       if (error.code === 'auth/popup-closed-by-user' || error.code === 'auth/cancelled-popup-request') {
-        return;
+        return; // Silently ignore if popup closed
       }
       
-      // Fallback: If Popup fails due to environment restrictions, try Redirect
-      if (error.code === 'auth/internal-error' || error.code === 'auth/network-request-failed') {
-        try {
-          console.log("Auth System: Popup failed, attempting redirect fallback...");
-          await signInWithRedirect(auth, googleProvider);
-        } catch (redirectErr) {
-          toast.error('Authentication blocked. Check browser privacy settings.');
-        }
-        return;
-      }
-
-      toast.error(`Login failed: ${error.message}`);
+      toast.error(`Login failed: ${error.message || 'Unknown error'}`);
     }
   };
 
