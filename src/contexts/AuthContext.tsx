@@ -88,48 +88,61 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
 
   useEffect(() => {
-    console.log("AuthContext: Initializing Auth System...");
+    console.log("AuthContext: System Boot - Domain:", window.location.hostname);
     
-    // Explicitly set persistence to local for consistent behavior across domains
-    setPersistence(auth, browserLocalPersistence)
-      .catch(err => console.error("AuthContext: Persistence setup failed", err));
+    // Flag to prevent race condition between onAuthStateChanged and getRedirectResult
+    let redirectCheckInProgress = true;
 
-    // Handle results from redirects (crucial for reliability on mobile/external domains)
-    getRedirectResult(auth)
-      .then(async (result) => {
+    const initAuth = async () => {
+      try {
+        // 1. Force Persistence FIRST
+        await setPersistence(auth, browserLocalPersistence);
+        console.log("AuthContext: Persistence confirmed: LOCAL");
+
+        // 2. Resolve any pending Redirect Results (Essential for cross-domain flows)
+        const result = await getRedirectResult(auth);
         if (result) {
-          console.log("AuthContext: Successful login recovered from redirect for", result.user.email);
+          console.log("AuthContext: Redirect result captured for:", result.user.email);
           await handleSignInResult(result.user);
         } else {
-          console.log("AuthContext: No redirect result found (Normal behavior if not returning from login)");
+          console.log("AuthContext: No pending redirect result found.");
         }
-      })
-      .catch((err) => {
-        console.error("AuthContext: Error recovering from redirect", err);
-        // On connection failures or iframe blocks, we show a helpful hint
-        if (err.code === 'auth/internal-error' || err.code === 'auth/network-request-failed') {
-          toast.error("Auth Blocked: Please add 'iit-exchange.onrender.com' to Authorized Domains in Firebase Console and allow cookies.", { duration: 8000 });
+      } catch (err: any) {
+        console.error("AuthContext: Bootstrap Error:", err.code, err.message);
+        
+        // Specific guidance for Render.com users
+        if (err.code === 'auth/network-request-failed' || err.code === 'auth/internal-error') {
+          toast.error("Auth blocked by browser tracking protection. If you are on Render.com, please ensure 'iit-exchange.onrender.com' is an Authorized Domain in Firebase.", { duration: 10000 });
         }
-      });
+      } finally {
+        redirectCheckInProgress = false;
+        // If onAuthStateChanged already fired and set user to null, we might need to stop loading now
+      }
+    };
+
+    initAuth();
 
     const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
-      console.log("AuthContext: Auth status change:", firebaseUser ? "Authenticated" : "Not Authenticated");
+      console.log("AuthContext: State sync -", firebaseUser ? `User: ${firebaseUser.email}` : "No User");
       
       if (firebaseUser) {
         if (firebaseUser.email?.endsWith('@iitdh.ac.in')) {
           setUser(firebaseUser);
           await fetchProfile(firebaseUser.uid, firebaseUser.email);
         } else {
-          console.warn("AuthContext: Domain violation in state, signing out");
+          console.warn("AuthContext: Invalid domain detection - signing out");
           await auth.signOut();
           setUser(null);
           setProfile(null);
           setIsAdmin(false);
         }
       } else {
-        setUser(null);
-        setProfile(null);
-        setIsAdmin(false);
+        // Only clear if we aren't currently waiting for a redirect result
+        if (!redirectCheckInProgress) {
+          setUser(null);
+          setProfile(null);
+          setIsAdmin(false);
+        }
       }
       setLoading(false);
     });
@@ -138,40 +151,39 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const signIn = async () => {
-    console.log("AuthContext: Starting login flow...");
+    console.log("AuthContext: Login requested from:", window.location.hostname);
     
-    const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
-    const isIframe = window.self !== window.top;
+    // Logic: If we are on ANY domain that isn't the primary Firebase auth domain, 
+    // Redirect is significantly more reliable for first-party cookie context.
+    const isPrimaryDomain = window.location.hostname.includes('firebaseapp.com') || 
+                          window.location.hostname === 'localhost' ||
+                          window.location.hostname.includes('asia-east1.run.app');
 
     try {
-      if (isIframe && !isMobile) {
-        // Desktop Iframes (AI Studio preview) usually handle popups better if cookies are OK
-        console.log("AuthContext: Mode = Popup");
+      if (isPrimaryDomain) {
+        console.log("AuthContext: Primary/Dev domain detected - Using Popup");
         const result = await signInWithPopup(auth, googleProvider);
         await handleSignInResult(result.user);
       } else {
-        // Mobile or direct Render.com usage often requires redirects due to Safari/Mobile Chrome restrictions
-        console.log("AuthContext: Mode = Redirect (Session Reliability)");
+        // ALWAYS use redirect on Render.com to bypass popup/cookie communication blocks
+        console.log("AuthContext: External domain detected - Using Redirect for reliability");
         await signInWithRedirect(auth, googleProvider);
       }
     } catch (error: any) {
-      console.error("AuthContext: Login error details", error);
+      console.error("AuthContext: Login flow error:", error.code, error.message);
       
       if (error.code === 'auth/popup-closed-by-user' || error.code === 'auth/cancelled-popup-request') {
         return;
       }
       
-      if (error.code === 'auth/internal-error' || error.code === 'auth/network-request-failed') {
-        console.warn("AuthContext: Popup blocked or connectivity issue, falling back to redirect...");
-        try {
-          await signInWithRedirect(auth, googleProvider);
-        } catch (redirectErr) {
-          toast.error("Auth system blocked by browser tracking protection. Please open in a new tab or adjust cookie settings.");
-        }
+      // Fallback for popup failures
+      if (error.code === 'auth/popup-blocked' || error.code === 'auth/internal-error') {
+        console.warn("AuthContext: Popup method blocked, falling back to Redirect...");
+        await signInWithRedirect(auth, googleProvider);
         return;
       }
 
-      toast.error(`Login failed: ${error.message || 'Please check your connection'}`);
+      toast.error(`Login error: ${error.message}`);
     }
   };
 
