@@ -2,8 +2,12 @@ import React, { createContext, useContext, useEffect, useState } from 'react';
 import { 
   User, 
   signInWithPopup, 
+  signInWithRedirect,
+  getRedirectResult,
   signOut, 
-  onAuthStateChanged 
+  onAuthStateChanged,
+  setPersistence,
+  browserLocalPersistence
 } from 'firebase/auth';
 import { doc, getDoc } from 'firebase/firestore';
 import { auth, googleProvider, db } from '../lib/firebase';
@@ -62,9 +66,33 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
 
   useEffect(() => {
+    // 1. Force local persistence to ensure Render.com handles sessions correctly
+    setPersistence(auth, browserLocalPersistence).catch(console.error);
+
+    // 2. Resolve any pending redirects (Crucial for Render.com reliability)
+    getRedirectResult(auth).then(async (result) => {
+      if (result && result.user) {
+        console.log("Redirect login success:", result.user.email);
+        if (result.user.email?.endsWith('@iitdh.ac.in')) {
+          setUser(result.user);
+          await fetchProfile(result.user.uid, result.user.email);
+          toast.success('Successfully logged in via redirect!');
+        } else {
+          await auth.signOut();
+          toast.error("Only @iitdh.ac.in permitted.");
+        }
+      }
+    }).catch((error) => {
+      console.error("Redirect resolution error:", error);
+      if (error.code !== 'auth/network-request-failed') {
+        // Only show if it's not a generic networking glitch
+        toast.error("Authentication interrupted. Please try again.");
+      }
+    });
+
     const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
+      console.log("Auth state changed:", firebaseUser?.email || "No user");
       if (firebaseUser) {
-        // Strict domain check
         if (firebaseUser.email?.endsWith('@iitdh.ac.in')) {
           setUser(firebaseUser);
           await fetchProfile(firebaseUser.uid, firebaseUser.email);
@@ -89,30 +117,44 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const signIn = async () => {
     try {
       setLoading(true);
-      const result = await signInWithPopup(auth, googleProvider);
       
-      if (!result.user.email?.endsWith('@iitdh.ac.in')) {
-        await auth.signOut();
-        toast.error('Only @iitdh.ac.in emails are allowed.');
-        return;
+      // LOGIC: Use Redirect for custom Render domains to bypass 3rd-party cookie blocking.
+      // Use Popup for development domains for speed.
+      const isCustomDomain = window.location.hostname.includes('render.com') || 
+                             !window.location.hostname.includes('asia-east1.run.app') && 
+                             window.location.hostname !== 'localhost';
+
+      if (isCustomDomain) {
+        console.log("Using Redirect flow for production reliability.");
+        await signInWithRedirect(auth, googleProvider);
+        // Page will redirect, no code below this will execute
+      } else {
+        const result = await signInWithPopup(auth, googleProvider);
+        if (!result.user.email?.endsWith('@iitdh.ac.in')) {
+          await auth.signOut();
+          toast.error('Only @iitdh.ac.in emails are allowed.');
+          return;
+        }
+        toast.success('Successfully logged in!');
       }
-      
-      toast.success('Successfully logged in!');
     } catch (error: any) {
       console.error("Login error:", error);
-      if (error.code === 'auth/popup-closed-by-user') {
-        setLoading(false);
+      setLoading(false);
+      
+      if (error.code === 'auth/popup-closed-by-user') return;
+      
+      // Fallback: If Popup fails, attempt Redirect automatically
+      if (error.code === 'auth/internal-error' || error.code === 'auth/network-request-failed') {
+        try {
+          console.log("Popup blocked or failed, attempting redirect fallback...");
+          await signInWithRedirect(auth, googleProvider);
+        } catch (redirectErr) {
+          toast.error('Authentication system blocked. Please check your browser cookie settings.');
+        }
         return;
       }
       
-      if (error.code === 'auth/internal-error' && error.message?.includes('popup')) {
-        toast.error('Popup blocked. Please check your browser settings or try a different browser.');
-      } else if (error.code === 'auth/network-request-failed') {
-        toast.error('Connection failed. Please ensure your domain is authorized in Firebase.');
-      } else {
-        toast.error(`Login failed: ${error.message}`);
-      }
-      setLoading(false);
+      toast.error(`Login failed: ${error.message}`);
     }
   };
 
