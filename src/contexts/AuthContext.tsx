@@ -98,15 +98,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     getRedirectResult(auth)
       .then(async (result) => {
         if (result) {
-          console.log("AuthContext: Login detected from redirect result");
+          console.log("AuthContext: Successful login recovered from redirect for", result.user.email);
           await handleSignInResult(result.user);
+        } else {
+          console.log("AuthContext: No redirect result found (Normal behavior if not returning from login)");
         }
       })
       .catch((err) => {
         console.error("AuthContext: Error recovering from redirect", err);
         // On connection failures or iframe blocks, we show a helpful hint
         if (err.code === 'auth/internal-error' || err.code === 'auth/network-request-failed') {
-          toast.error("Security block detected. Please ensure cookies are allowed and cross-site tracking is not blocked for this site.", { duration: 6000 });
+          toast.error("Auth Blocked: Please add 'iit-exchange.onrender.com' to Authorized Domains in Firebase Console and allow cookies.", { duration: 8000 });
         }
       });
 
