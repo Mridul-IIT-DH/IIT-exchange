@@ -218,7 +218,7 @@ export default function ProductDetail() {
           <div className="py-10 px-8 lg:pr-12 flex flex-col">
             <div className="flex justify-between items-start gap-4">
               <div className="flex-1">
-                <h1 className="text-4xl font-black text-black tracking-tightest leading-none uppercase italic break-words line-clamp-2">
+                <h1 className="text-4xl font-black text-black tracking-tightest leading-none uppercase italic break-words">
                   {product.title}
                 </h1>
                 <div className="flex items-center gap-4 mt-4 flex-wrap">
