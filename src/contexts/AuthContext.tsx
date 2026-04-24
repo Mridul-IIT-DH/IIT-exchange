@@ -59,17 +59,26 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
 
   useEffect(() => {
+    console.log("AuthContext: Initializing onAuthStateChanged subscriber");
     const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
+      console.log("AuthContext: onAuthStateChanged event triggered", {
+        hasUser: !!firebaseUser,
+        email: firebaseUser?.email,
+        isVerified: firebaseUser?.emailVerified
+      });
+
       if (firebaseUser) {
         // Enforce IITDH domain logic even on re-auth strictly
         if (firebaseUser.email?.endsWith('@iitdh.ac.in')) {
           setUser(firebaseUser);
           await fetchProfile(firebaseUser.uid, firebaseUser.email);
         } else {
+          console.warn("AuthContext: Non-IITDH email detected, signing out", firebaseUser.email);
           await auth.signOut();
           setUser(null);
           setProfile(null);
           setIsAdmin(false);
+          toast.error("Please use your @iitdh.ac.in account.");
         }
       } else {
         setUser(null);
@@ -83,9 +92,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const signIn = async () => {
+    console.log("AuthContext: Initiating signInWithPopup");
     try {
       const result = await signInWithPopup(auth, googleProvider);
+      console.log("AuthContext: signInWithPopup success", {
+        uid: result.user.uid,
+        email: result.user.email
+      });
+
       if (!result.user.email?.endsWith('@iitdh.ac.in')) {
+        console.warn("AuthContext: Post-popup domain check failed");
         await auth.signOut();
         toast.error('Only @iitdh.ac.in emails are allowed.', { duration: 4000 });
         setUser(null);
@@ -93,12 +109,20 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }
       toast.success('Successfully logged in!');
     } catch (error: any) {
+      console.error("AuthContext: signInWithPopup failure", error);
+      
       if (error.code === 'auth/popup-closed-by-user' || error.code === 'auth/cancelled-popup-request') {
-        // Silently ignore if the user simply closes the popup window
         return;
       }
-      console.error("Login error:", error);
-      toast.error(`Failed to log in: ${error.message || 'Unknown error'}`);
+      
+      // Check for specific iframe/cookie blocked errors
+      if (error.code === 'auth/internal-error' && error.message?.includes('popup')) {
+        toast.error('Popup blocked or cookies disabled. Try "Open in new tab" (top right icon).');
+      } else if (error.code === 'auth/network-request-failed') {
+        toast.error('Connection failed. Please ensure "iit-exchange.onrender.com" is added to "Authorized Domains" in your Firebase console.', { duration: 6000 });
+      } else {
+        toast.error(`Login failed: ${error.message || 'Check your internet connection'}`);
+      }
     }
   };
 
