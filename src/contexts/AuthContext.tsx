@@ -2,8 +2,12 @@ import React, { createContext, useContext, useEffect, useState } from 'react';
 import { 
   User, 
   signInWithPopup, 
+  signInWithRedirect,
+  getRedirectResult,
   signOut, 
-  onAuthStateChanged 
+  onAuthStateChanged,
+  setPersistence,
+  browserLocalPersistence
 } from 'firebase/auth';
 import { doc, getDoc } from 'firebase/firestore';
 import { auth, googleProvider, db } from '../lib/firebase';
@@ -62,7 +66,29 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
 
   useEffect(() => {
-    // Initializing the auth state listener
+    // 1. Force local persistence
+    setPersistence(auth, browserLocalPersistence).catch(console.error);
+
+    // 2. Resolve any pending redirects (Crucial for Render.com reliability)
+    getRedirectResult(auth).then(async (result) => {
+      if (result && result.user) {
+        console.log("Auth System: Redirect success:", result.user.email);
+        if (result.user.email?.endsWith('@iitdh.ac.in')) {
+          setUser(result.user);
+          await fetchProfile(result.user.uid, result.user.email);
+          toast.success('Successfully logged in!');
+        } else {
+          await auth.signOut();
+          toast.error("Only @iitdh.ac.in permitted.");
+        }
+      }
+    }).catch((error) => {
+      console.error("Auth System: Redirect error:", error);
+      if (error.code === 'auth/internal-error' || error.code === 'auth/network-request-failed') {
+        toast.error("Authentication check failed. Please check browser cookie settings.");
+      }
+    });
+
     const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
       console.log("Auth System: State Change", firebaseUser ? firebaseUser.email : "No User");
       
@@ -91,30 +117,46 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const signIn = async () => {
     try {
-      // Note: We avoid setting global loading state here to prevent "white screen" during popup
-      const result = await signInWithPopup(auth, googleProvider);
+      setLoading(true);
       
-      if (!result.user.email?.endsWith('@iitdh.ac.in')) {
-        await auth.signOut();
-        toast.error('Only @iitdh.ac.in emails are allowed.');
-        return;
+      const hostname = window.location.hostname;
+      // Use Redirect for Render custom domains, Popup for local/dev
+      const isCustomDomain = hostname.includes('onrender.com') || 
+                             (hostname !== 'localhost' && !hostname.includes('.run.app'));
+
+      if (isCustomDomain) {
+        console.log("Auth System: Using Redirect flow for reliability.");
+        await signInWithRedirect(auth, googleProvider);
+        // Page will redirect, execution stops here
+      } else {
+        const result = await signInWithPopup(auth, googleProvider);
+        if (!result.user.email?.endsWith('@iitdh.ac.in')) {
+          await auth.signOut();
+          toast.error('Only @iitdh.ac.in emails are allowed.');
+          return;
+        }
+        toast.success('Successfully logged in!');
       }
-      
-      toast.success('Successfully logged in!');
     } catch (error: any) {
       console.error("Login Error:", error);
+      setLoading(false);
       
       if (error.code === 'auth/popup-closed-by-user' || error.code === 'auth/cancelled-popup-request') {
         return;
       }
       
-      if (error.code === 'auth/internal-error' && error.message?.includes('popup')) {
-        toast.error('Popup blocked. Please check your browser settings.');
-      } else if (error.code === 'auth/network-request-failed') {
-        toast.error('Connection failed. Please check your internet or domain authorization.');
-      } else {
-        toast.error(`Login failed: ${error.message}`);
+      // Fallback: If Popup fails due to environment restrictions, try Redirect
+      if (error.code === 'auth/internal-error' || error.code === 'auth/network-request-failed') {
+        try {
+          console.log("Auth System: Popup failed, attempting redirect fallback...");
+          await signInWithRedirect(auth, googleProvider);
+        } catch (redirectErr) {
+          toast.error('Authentication blocked. Check browser privacy settings.');
+        }
+        return;
       }
+
+      toast.error(`Login failed: ${error.message}`);
     }
   };
 
