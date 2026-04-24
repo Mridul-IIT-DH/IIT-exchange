@@ -66,10 +66,12 @@ async function startServer() {
   // the client's IP from the 'X-Forwarded-For' headers provided by Cloud Run / Nginx.
   app.set("trust proxy", 1);
 
-  // Enterprise Security: Helmet headers
+  // Enterprise Security: Helmet headers configuration for Firebase Auth compatibility
   app.use(helmet({
-    contentSecurityPolicy: false, // CSP blocks inline scripts in Vite dev mode, managed by platform
-    crossOriginEmbedderPolicy: false // Allows loading external images (Cloudinary)
+    contentSecurityPolicy: false, 
+    crossOriginEmbedderPolicy: false,
+    crossOriginOpenerPolicy: { policy: "unsafe-none" }, // Required for Firebase Auth Popups/Redirects on custom domains
+    crossOriginResourcePolicy: { policy: "cross-origin" }
   }));
 
   // Enterprise Security: Rate Limiting

@@ -66,53 +66,63 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
 
   useEffect(() => {
-    // 1. Force local persistence
-    setPersistence(auth, browserLocalPersistence).catch(console.error);
-
-    // 2. Resolve any pending redirects (Crucial for Render.com reliability)
-    getRedirectResult(auth).then(async (result) => {
-      if (result && result.user) {
-        console.log("Auth System: Redirect success:", result.user.email);
-        if (result.user.email?.endsWith('@iitdh.ac.in')) {
-          setUser(result.user);
-          await fetchProfile(result.user.uid, result.user.email);
-          toast.success('Successfully logged in!');
-        } else {
-          await auth.signOut();
-          toast.error("Only @iitdh.ac.in permitted.");
-        }
-      }
-    }).catch((error) => {
-      console.error("Auth System: Redirect error:", error);
-      if (error.code === 'auth/internal-error' || error.code === 'auth/network-request-failed') {
-        toast.error("Authentication check failed. Please check browser cookie settings.");
-      }
-    });
-
-    const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
-      console.log("Auth System: State Change", firebaseUser ? firebaseUser.email : "No User");
+    let isMounted = true;
+    
+    const initializeAuth = async () => {
+      console.log("Auth System: Initializing on", window.location.hostname);
       
-      if (firebaseUser) {
-        if (firebaseUser.email?.endsWith('@iitdh.ac.in')) {
-          setUser(firebaseUser);
-          await fetchProfile(firebaseUser.uid, firebaseUser.email);
+      try {
+        // Resolve any pending redirect results first (crucial for custom domains)
+        const result = await getRedirectResult(auth);
+        if (result && result.user && isMounted) {
+          console.log("Auth System: Successfully resolved redirect login", result.user.email);
+          if (result.user.email?.endsWith('@iitdh.ac.in')) {
+            setUser(result.user);
+            await fetchProfile(result.user.uid, result.user.email);
+            toast.success('Successfully logged in!');
+          } else {
+            await auth.signOut();
+            toast.error("IITDH email required.");
+          }
+        }
+      } catch (error: any) {
+        console.error("Auth System: Redirect handle error", error.code, error.message);
+        // auth/account-exists-with-different-credential etc are common here
+      }
+
+      // Listen for authenticated state changes
+      const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
+        if (!isMounted) return;
+        
+        console.log("Auth System: session status -", firebaseUser ? firebaseUser.email : "No User");
+        
+        if (firebaseUser) {
+          if (firebaseUser.email?.endsWith('@iitdh.ac.in')) {
+            setUser(firebaseUser);
+            await fetchProfile(firebaseUser.uid, firebaseUser.email);
+          } else {
+            await auth.signOut();
+            setUser(null);
+            setProfile(null);
+            setIsAdmin(false);
+          }
         } else {
-          // Force sign out if unauthorized domain somehow got through (e.g. cached session redirect)
-          await auth.signOut();
           setUser(null);
           setProfile(null);
           setIsAdmin(false);
-          toast.error("Please use your @iitdh.ac.in account.");
         }
-      } else {
-        setUser(null);
-        setProfile(null);
-        setIsAdmin(false);
-      }
-      setLoading(false);
-    });
+        setLoading(false);
+      });
 
-    return () => unsubscribe();
+      return unsubscribe;
+    };
+
+    const cleanup = initializeAuth();
+
+    return () => {
+      isMounted = false;
+      cleanup.then(unsub => unsub && typeof unsub === 'function' && unsub());
+    };
   }, []);
 
   const signIn = async () => {
