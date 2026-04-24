@@ -305,9 +305,10 @@ export default function Layout() {
                 onClick={item.action}
                 className={cn(
                   "p-4 rounded-2xl transition-all duration-300 relative group",
+                  item.id === 'sell' ? "bg-lavender text-white shadow-lg shadow-indigo-200/50" : "",
                   isActive
-                    ? "bg-google-blue text-white shadow-xl shadow-blue-100 scale-110 -translate-y-1" 
-                    : "text-gray-400 hover:text-google-blue hover:bg-blue-50/50"
+                    ? item.id === 'sell' ? "scale-110 -translate-y-1" : "bg-google-blue text-white shadow-xl shadow-blue-100 scale-110 -translate-y-1" 
+                    : item.id === 'sell' ? "hover:opacity-90" : "text-gray-400 hover:text-google-blue hover:bg-blue-50/50"
                 )}
               >
                 <item.icon size={22} strokeWidth={2.5} />

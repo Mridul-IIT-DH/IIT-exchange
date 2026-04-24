@@ -365,7 +365,7 @@ export default function Sell() {
             value={title}
             onChange={(e) => setTitle(e.target.value)}
             placeholder="E.G. ENGINEERING GRAPHICS KIT, MACBOOK AIR M1"
-            className="block w-full px-6 py-4 bg-gray-50 border border-gray-100 rounded-2xl focus:ring-4 focus:ring-google-blue/10 focus:border-google-blue focus:bg-white outline-none transition-all font-black text-sm tracking-tight placeholder:text-gray-500"
+            className="block w-full px-6 py-4 bg-gray-50 border border-gray-100 rounded-2xl focus:ring-4 focus:ring-google-blue/10 focus:border-google-blue focus:bg-white outline-none transition-all font-bold text-sm tracking-tight placeholder:text-gray-500"
           />
         </div>
 
