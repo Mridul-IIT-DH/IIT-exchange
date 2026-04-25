@@ -419,10 +419,15 @@ export default function Layout() {
             <span className="text-[10px] font-black text-black uppercase tracking-widest">
               &copy; {new Date().getFullYear()} IIT Exchange System
             </span>
-            <div className="flex gap-4">
-              <div className="w-2 h-2 bg-google-green rounded-full animate-pulse"></div>
-              <span className="text-[10px] font-black text-google-green uppercase tracking-widest">Network Active</span>
-            </div>
+            <a 
+              href="https://iit-exchange.betteruptime.com/" 
+              target="_blank" 
+              rel="noopener noreferrer"
+              className="flex items-center gap-2 hover:opacity-80 transition-opacity cursor-pointer group"
+            >
+              <div className="w-2 h-2 bg-google-green rounded-full animate-pulse shadow-[0_0_8px_rgba(52,168,83,0.6)]"></div>
+              <span className="text-[10px] font-black text-google-green uppercase tracking-widest group-hover:underline">System Status</span>
+            </a>
           </div>
         </div>
       </footer>
