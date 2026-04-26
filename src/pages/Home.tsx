@@ -18,7 +18,7 @@ const snappySpring = {
 };
 
 function StatusUpdateBanner() {
-  const [status, setStatus] = useState<{ title: string; link: string; date: string; state: string } | null>(null);
+  const [status, setStatus] = useState<{ title: string; link: string; date: string; state: string; isActive?: boolean; isUpcoming?: boolean } | null>(null);
 
   useEffect(() => {
     fetch('/api/status')
@@ -37,13 +37,30 @@ function StatusUpdateBanner() {
           let dateStr = '';
           const starts = activeReport.attributes.starts_at;
           const ends = activeReport.attributes.ends_at;
+          let isActive = false;
+          let isUpcoming = false;
 
           if (starts) {
              const startDate = new Date(starts);
+             const now = new Date();
+             
+             if (now < startDate) {
+               isUpcoming = true;
+             } else {
+               if (ends) {
+                 const endDate = new Date(ends);
+                 if (now <= endDate) {
+                   isActive = true;
+                 }
+               } else {
+                 isActive = true;
+               }
+             }
+
              if (ends) {
                 const endDate = new Date(ends);
-                const formatter = new Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
-                const timeFormatter = new Intl.DateTimeFormat('en-US', { hour: '2-digit', minute: '2-digit' });
+                const formatter = new Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' });
+                const timeFormatter = new Intl.DateTimeFormat('en-US', { hour: 'numeric', minute: '2-digit' });
                 
                 if (startDate.toDateString() === endDate.toDateString()) {
                    dateStr = `${formatter.format(startDate)} - ${timeFormatter.format(endDate)}`;
@@ -51,7 +68,7 @@ function StatusUpdateBanner() {
                    dateStr = `${formatter.format(startDate)} - ${formatter.format(endDate)}`;
                 }
              } else {
-                const formatter = new Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
+                const formatter = new Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' });
                 dateStr = `Started ${formatter.format(startDate)}`;
              }
           }
@@ -60,7 +77,9 @@ function StatusUpdateBanner() {
             title: activeReport.attributes.title, 
             link: "https://iit-exchange.betteruptime.com/", 
             date: dateStr,
-            state: activeReport.attributes.aggregate_state
+            state: activeReport.attributes.aggregate_state,
+            isActive,
+            isUpcoming
           });
         } else if (aggregateState && aggregateState !== 'operational') {
           setStatus({
@@ -78,10 +97,34 @@ function StatusUpdateBanner() {
 
   if (!status) return null;
 
-  const isMaintenance = status.state === 'maintenance';
-  const iconColor = isMaintenance ? "text-blue-500" : "text-amber-500";
-  const bgColor = isMaintenance ? "bg-blue-50" : "bg-amber-50";
-  const badgeLabel = isMaintenance ? "Maintenance" : "System Update";
+  let iconColor = "text-amber-600";
+  let bgColor = "bg-amber-100/50";
+  let badgeClasses = "text-amber-700 bg-white border-amber-200";
+  let badgeLabel = "System Update";
+
+  if (status.state === 'maintenance') {
+    if (status.isActive) {
+      iconColor = "text-red-600";
+      bgColor = "bg-red-50";
+      badgeClasses = "text-red-700 bg-white border-red-200";
+      badgeLabel = "Active Maintenance";
+    } else if (status.isUpcoming) {
+      iconColor = "text-blue-600";
+      bgColor = "bg-blue-50";
+      badgeClasses = "text-blue-700 bg-white border-blue-200";
+      badgeLabel = "Upcoming Maintenance";
+    } else {
+      iconColor = "text-indigo-600";
+      bgColor = "bg-indigo-50";
+      badgeClasses = "text-indigo-700 bg-white border-indigo-200";
+      badgeLabel = "Maintenance";
+    }
+  } else if (status.state !== 'operational') {
+    iconColor = "text-rose-600";
+    bgColor = "bg-rose-50";
+    badgeClasses = "text-rose-700 bg-white border-rose-200";
+    badgeLabel = "System Outage";
+  }
 
   return (
     <motion.a 
@@ -90,16 +133,16 @@ function StatusUpdateBanner() {
       rel="noopener noreferrer"
       initial={{ opacity: 0, scale: 0.95 }}
       animate={{ opacity: 1, scale: 1 }}
-      className={`group flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-4 bg-white border border-gray-100 hover:border-gray-200 rounded-2xl p-4 shadow-sm hover:shadow-md transition-all cursor-pointer w-full max-w-sm shrink-0 self-start`}
+      className={`group flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-4 bg-white border border-gray-200 hover:border-gray-300 rounded-2xl p-4 shadow-sm hover:shadow-md transition-all cursor-pointer w-full max-w-md shrink-0 self-start`}
     >
-      <div className={`relative flex shrink-0 h-10 w-10 items-center justify-center ${bgColor} rounded-full ${iconColor} group-hover:scale-110 transition-transform`}>
-        <span className={`absolute inline-flex h-full w-full rounded-full ${bgColor} opacity-50 animate-ping`}></span>
+      <div className={`relative flex shrink-0 h-10 w-10 items-center justify-center rounded-full ${bgColor} ${iconColor} group-hover:scale-110 transition-transform`}>
+        <span className={`absolute inline-flex h-full w-full rounded-full ${bgColor} opacity-60 animate-ping`}></span>
         <Info size={18} strokeWidth={2.5} />
       </div>
-      <div>
-        <div className="flex items-center gap-2 mb-0.5">
-          <span className={`text-[9px] font-black uppercase tracking-widest ${iconColor} bg-white border border-gray-100 px-2 py-0.5 rounded-sm`}>{badgeLabel}</span>
-          {status.date && <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">{status.date}</span>}
+      <div className="flex-1 min-w-0">
+        <div className="flex flex-wrap items-center gap-2 mb-1">
+          <span className={`text-[9px] font-black uppercase tracking-widest border px-2 py-0.5 rounded-sm ${badgeClasses}`}>{badgeLabel}</span>
+          {status.date && <span className="text-[10px] font-bold text-gray-500 uppercase tracking-widest whitespace-nowrap">{status.date}</span>}
         </div>
         <p className="text-xs sm:text-sm font-bold text-gray-800 line-clamp-2 leading-tight group-hover:text-black transition-colors">{status.title}</p>
       </div>
