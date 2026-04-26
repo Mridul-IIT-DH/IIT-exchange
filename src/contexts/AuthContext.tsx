@@ -63,7 +63,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
-      console.log("Auth System: State Change", firebaseUser ? firebaseUser.email : "No User");
       
       if (firebaseUser) {
         if (firebaseUser.email?.endsWith('@iitdh.ac.in')) {
