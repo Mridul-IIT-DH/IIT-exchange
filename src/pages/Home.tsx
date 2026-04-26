@@ -98,15 +98,15 @@ function StatusUpdateBanner() {
   if (!status) return null;
 
   let iconColor = "text-amber-600";
-  let bgColor = "bg-amber-100/50";
+  let bgColor = "bg-amber-50";
   let badgeClasses = "text-amber-700 bg-white border-amber-200";
   let badgeLabel = "System Update";
 
   if (status.state === 'maintenance') {
     if (status.isActive) {
-      iconColor = "text-red-600";
-      bgColor = "bg-red-50";
-      badgeClasses = "text-red-700 bg-white border-red-200";
+      iconColor = "text-orange-600";
+      bgColor = "bg-orange-50";
+      badgeClasses = "text-orange-700 bg-white border-orange-200";
       badgeLabel = "Active Maintenance";
     } else if (status.isUpcoming) {
       iconColor = "text-blue-600";
@@ -114,15 +114,15 @@ function StatusUpdateBanner() {
       badgeClasses = "text-blue-700 bg-white border-blue-200";
       badgeLabel = "Upcoming Maintenance";
     } else {
-      iconColor = "text-indigo-600";
-      bgColor = "bg-indigo-50";
-      badgeClasses = "text-indigo-700 bg-white border-indigo-200";
+      iconColor = "text-purple-600";
+      bgColor = "bg-purple-50";
+      badgeClasses = "text-purple-700 bg-white border-purple-200";
       badgeLabel = "Maintenance";
     }
   } else if (status.state !== 'operational') {
-    iconColor = "text-rose-600";
-    bgColor = "bg-rose-50";
-    badgeClasses = "text-rose-700 bg-white border-rose-200";
+    iconColor = "text-red-600";
+    bgColor = "bg-red-50";
+    badgeClasses = "text-red-700 bg-white border-red-200";
     badgeLabel = "System Outage";
   }
 
