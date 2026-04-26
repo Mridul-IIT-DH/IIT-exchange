@@ -327,8 +327,8 @@ export default function Dashboard() {
                         </div>
 
                         <div className="flex-1 min-w-0">
-                          <Link to={`/product/${product.id}`} className="text-xl font-black text-gray-900 hover:text-google-blue transition truncate block tracking-tight">
-                            {product.title}
+                          <Link to={`/product/${product.id}`} className="text-xl font-black text-gray-900 hover:text-google-blue transition truncate block tracking-tight" title={product.title}>
+                            {product.title.split(' ').map((w: string) => w.length > 12 ? w.match(/.{1,12}/g)?.join('\u200B') || w : w).join(' ')}
                           </Link>
                           <div className="mt-2 flex flex-wrap gap-x-6 gap-y-2 text-[10px] text-gray-600 uppercase font-black tracking-widest">
                             <span className="text-google-blue flex items-center bg-blue-50 px-3 py-1 rounded-full">
@@ -454,8 +454,10 @@ export default function Dashboard() {
                               )}
                             </div>
                           </div>
-                          <div className="p-8">
-                            <h3 className="text-lg font-black text-gray-900 group-hover:text-google-blue transition line-clamp-1 italic tracking-tight">{product.title}</h3>
+                          <div className="p-8 overflow-hidden">
+                            <h3 className="text-lg font-black text-gray-900 group-hover:text-google-blue transition truncate italic tracking-tight" title={product.title}>
+                              {product.title.split(' ').map((w: string) => w.length > 12 ? w.match(/.{1,12}/g)?.join('\u200B') || w : w).join(' ')}
+                            </h3>
                             <p className="mt-3 text-xl font-black text-google-blue flex items-center tracking-tighter">
                               {product.isPriceNegotiable && product.price === 0 ? "DISCUSS" : <><IndianRupee size={18} strokeWidth={3}/> {product.price.toLocaleString()}</>}
                             </p>

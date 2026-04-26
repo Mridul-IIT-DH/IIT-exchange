@@ -403,9 +403,9 @@ export default function Home() {
                       />
                     </motion.button>
 </div>
-                  <div className="p-3 sm:p-4 flex-1 flex flex-col">
-                    <h3 className="text-sm sm:text-lg font-bold text-black line-clamp-1 group-hover:text-google-blue transition">
-                      {product.title}
+                  <div className="p-3 sm:p-4 flex-1 flex flex-col overflow-hidden">
+                    <h3 className="text-sm sm:text-lg font-bold text-black truncate group-hover:text-google-blue transition">
+                      {product.title.split(' ').map(w => w.length > 12 ? w.match(/.{1,12}/g)?.join('\u200B') || w : w).join(' ')}
                     </h3>
                     <div className="mt-1 flex flex-col sm:flex-row sm:items-baseline gap-1 sm:gap-2">
                       {product.isPriceNegotiable && product.price === 0 ? (

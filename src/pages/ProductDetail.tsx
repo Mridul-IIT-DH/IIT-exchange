@@ -217,9 +217,9 @@ export default function ProductDetail() {
           {/* Right: Details */}
           <div className="py-10 px-8 lg:pr-12 flex flex-col">
             <div className="flex justify-between items-start gap-4">
-              <div className="flex-1">
-                <h1 className="text-4xl font-black text-black tracking-tightest leading-none uppercase italic break-words">
-                  {product.title}
+              <div className="flex-1 min-w-0">
+                <h1 className="text-4xl font-black text-black tracking-tightest leading-none uppercase italic break-words" style={{ overflowWrap: 'anywhere' }}>
+                  {product.title.split(' ').map((w: string) => w.length > 20 ? w.match(/.{1,20}/g)?.join('\u200B') || w : w).join(' ')}
                 </h1>
                 <div className="flex items-center gap-4 mt-4 flex-wrap">
                   <p className="text-[10px] font-black text-black uppercase tracking-[0.2em] italic">
