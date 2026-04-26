@@ -71,6 +71,7 @@ service cloud.firestore {
         return data.title is string && data.title.size() <= 100 &&
                data.description is string && data.description.size() <= 5000 &&
                data.price is number && data.price >= 0 &&
+               (!("productAge" in data) || (data.productAge is string && data.productAge.matches('^(Brand New \\(Unused \\/ Sealed\\)|Less than 1 month|1 to 6 months|6 to 12 months|1 to 2 years|More than 2 years)$'))) &&
                data.sellerId is string && data.sellerId.size() <= 128 &&
                data.status is string && data.status.matches('^(active|sold|expired)$');
       }

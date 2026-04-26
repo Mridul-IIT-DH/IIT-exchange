@@ -28,7 +28,18 @@
       "properties": {
         "title": { "type": "string" },
         "description": { "type": "string" },
-        "productAge": { "type": "string", "description": "e.g. 6 Months, 2 Years" },
+        "productAge": { 
+          "type": "string", 
+          "enum": [
+            "Brand New (Unused / Sealed)",
+            "Less than 1 month",
+            "1 to 6 months",
+            "6 to 12 months",
+            "1 to 2 years",
+            "More than 2 years"
+          ],
+          "description": "Standardized age/condition ranges" 
+        },
         "price": { "type": "number" },
         "isPriceNegotiable": { "type": "boolean" },
         "images": { "type": "array" },

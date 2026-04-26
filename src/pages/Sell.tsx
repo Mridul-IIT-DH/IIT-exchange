@@ -9,6 +9,15 @@ import imageCompression from 'browser-image-compression';
 
 import { motion, AnimatePresence } from 'motion/react';
 
+const PRODUCT_AGE_OPTIONS = [
+  "Brand New (Unused / Sealed)",
+  "Less than 1 month",
+  "1 to 6 months",
+  "6 to 12 months",
+  "1 to 2 years",
+  "More than 2 years"
+];
+
 // Snappy spring configuration for a premium feel
 const snappySpring = {
   type: 'spring',
@@ -386,14 +395,17 @@ export default function Sell() {
         {/* Product Age */}
         <div>
           <label className="block text-[11px] font-black text-black uppercase tracking-widest mb-2 italic">Product Age <span className="text-google-red">*</span></label>
-          <input 
-            type="text" 
+          <select 
             required
-            value={productAge}
+            value={PRODUCT_AGE_OPTIONS.includes(productAge) ? productAge : ""}
             onChange={(e) => setProductAge(e.target.value)}
-            placeholder="E.G. 6 MONTHS, 2 SEMESTERS OLD..."
-            className="block w-full px-6 py-4 bg-gray-50 border border-gray-100 rounded-2xl focus:ring-4 focus:ring-google-blue/10 focus:border-google-blue focus:bg-white outline-none transition-all font-black text-sm tracking-tight placeholder:text-gray-500"
-          />
+            className="block w-full px-6 py-4 bg-gray-50 border border-gray-100 rounded-2xl focus:ring-4 focus:ring-google-blue/10 focus:border-google-blue focus:bg-white outline-none transition-all font-black text-sm tracking-tight text-gray-800"
+          >
+            <option value="" disabled>SELECT AGE / CONDITION</option>
+            {PRODUCT_AGE_OPTIONS.map(opt => (
+              <option key={opt} value={opt}>{opt.toUpperCase()}</option>
+            ))}
+          </select>
         </div>
 
         {/* Price Box */}
