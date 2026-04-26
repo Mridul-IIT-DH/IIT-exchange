@@ -219,6 +219,21 @@ async function startServer() {
     }
   });
 
+  // Status Page API Proxy
+  app.get("/api/status", async (req, res) => {
+    try {
+      const response = await fetch("https://iit-exchange.betteruptime.com/index.json");
+      if (!response.ok) {
+        throw new Error(`Failed to fetch status feed: ${response.status} ${response.statusText}`);
+      }
+      const data = await response.json();
+      res.json(data);
+    } catch (error: any) {
+      console.error("[Status API Error]:", error);
+      res.status(500).json({ error: "Failed to fetch status updates." });
+    }
+  });
+
   // --- API GUARDIAN ---
   // Ensure any unmatched /api calls or internal errors don't drift into Vite fallback
   app.use('/api', (req, res) => {

@@ -5,7 +5,7 @@ import { db } from '../lib/firebase';
 import { useAuth } from '../contexts/AuthContext';
 import { formatDistanceToNow } from 'date-fns';
 import { cn } from '../lib/utils';
-import { PackageSearch, IndianRupee, Search, Heart } from 'lucide-react';
+import { PackageSearch, IndianRupee, Search, Heart, Info } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import toast from 'react-hot-toast';
 
@@ -16,6 +16,96 @@ const snappySpring = {
   damping: 30,
   mass: 1
 };
+
+function StatusUpdateBanner() {
+  const [status, setStatus] = useState<{ title: string; link: string; date: string; state: string } | null>(null);
+
+  useEffect(() => {
+    fetch('/api/status')
+      .then(res => res.json())
+      .then(data => {
+        const included = data.included || [];
+        const activeReport = included.find((item: any) => 
+          item.type === 'status_report' && 
+          item.attributes && 
+          item.attributes.aggregate_state !== 'resolved'
+        );
+        
+        const aggregateState = data?.data?.attributes?.aggregate_state;
+
+        if (activeReport) {
+          let dateStr = '';
+          const starts = activeReport.attributes.starts_at;
+          const ends = activeReport.attributes.ends_at;
+
+          if (starts) {
+             const startDate = new Date(starts);
+             if (ends) {
+                const endDate = new Date(ends);
+                const formatter = new Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
+                const timeFormatter = new Intl.DateTimeFormat('en-US', { hour: '2-digit', minute: '2-digit' });
+                
+                if (startDate.toDateString() === endDate.toDateString()) {
+                   dateStr = `${formatter.format(startDate)} - ${timeFormatter.format(endDate)}`;
+                } else {
+                   dateStr = `${formatter.format(startDate)} - ${formatter.format(endDate)}`;
+                }
+             } else {
+                const formatter = new Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
+                dateStr = `Started ${formatter.format(startDate)}`;
+             }
+          }
+
+          setStatus({ 
+            title: activeReport.attributes.title, 
+            link: "https://iit-exchange.betteruptime.com/", 
+            date: dateStr,
+            state: activeReport.attributes.aggregate_state
+          });
+        } else if (aggregateState && aggregateState !== 'operational') {
+          setStatus({
+            title: "System issues detected",
+            link: "https://iit-exchange.betteruptime.com/",
+            date: '',
+            state: aggregateState
+          });
+        } else {
+          setStatus(null);
+        }
+      })
+      .catch(err => console.error("Could not load status"));
+  }, []);
+
+  if (!status) return null;
+
+  const isMaintenance = status.state === 'maintenance';
+  const iconColor = isMaintenance ? "text-blue-500" : "text-amber-500";
+  const bgColor = isMaintenance ? "bg-blue-50" : "bg-amber-50";
+  const badgeLabel = isMaintenance ? "Maintenance" : "System Update";
+
+  return (
+    <motion.a 
+      href={status.link}
+      target="_blank"
+      rel="noopener noreferrer"
+      initial={{ opacity: 0, scale: 0.95 }}
+      animate={{ opacity: 1, scale: 1 }}
+      className={`group flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-4 bg-white border border-gray-100 hover:border-gray-200 rounded-2xl p-4 shadow-sm hover:shadow-md transition-all cursor-pointer w-full max-w-sm shrink-0 self-start`}
+    >
+      <div className={`relative flex shrink-0 h-10 w-10 items-center justify-center ${bgColor} rounded-full ${iconColor} group-hover:scale-110 transition-transform`}>
+        <span className={`absolute inline-flex h-full w-full rounded-full ${bgColor} opacity-50 animate-ping`}></span>
+        <Info size={18} strokeWidth={2.5} />
+      </div>
+      <div>
+        <div className="flex items-center gap-2 mb-0.5">
+          <span className={`text-[9px] font-black uppercase tracking-widest ${iconColor} bg-white border border-gray-100 px-2 py-0.5 rounded-sm`}>{badgeLabel}</span>
+          {status.date && <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">{status.date}</span>}
+        </div>
+        <p className="text-xs sm:text-sm font-bold text-gray-800 line-clamp-2 leading-tight group-hover:text-black transition-colors">{status.title}</p>
+      </div>
+    </motion.a>
+  );
+}
 
 export default function Home() {
   const [products, setProducts] = useState<any[]>([]);
@@ -94,48 +184,53 @@ export default function Home() {
         <div className="absolute top-0 right-0 -translate-y-1/4 translate-x-1/4 w-96 h-96 bg-blue-50 rounded-full blur-3xl opacity-60 pointer-events-none"></div>
         <div className="absolute bottom-0 left-0 translate-y-1/4 -translate-x-1/4 w-64 h-64 bg-green-50 rounded-full blur-3xl opacity-40 pointer-events-none"></div>
 
-        <div className="max-w-4xl">
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={snappySpring}
-          >
-            <span className="inline-block text-[10px] font-black tracking-[0.3em] uppercase text-google-blue mb-6 px-4 py-1.5 bg-blue-50 rounded-full">
-              IIT Dharwad Marketplace
-            </span>
-            <h1 className="text-6xl md:text-8xl font-black text-black tracking-tightest leading-[0.85] uppercase italic mb-8">
-              IIT <span className="text-black non-italic font-light">Exchange</span>
-            </h1>
-            <p className="text-xl md:text-2xl text-gray-500 font-medium leading-tight mb-12 max-w-xl">
-              The official trading network. <span className="text-black">Secure, fast, and exclusively for campus.</span>
-            </p>
+        <div className="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-8 lg:gap-12 relative z-10">
+          <div className="max-w-4xl">
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={snappySpring}
+            >
+              <span className="inline-block text-[10px] font-black tracking-[0.3em] uppercase text-google-blue mb-6 px-4 py-1.5 bg-blue-50 rounded-full">
+                IIT Dharwad Marketplace
+              </span>
+              <h1 className="text-6xl md:text-8xl font-black text-black tracking-tightest leading-[0.85] uppercase italic mb-8">
+                IIT <span className="text-black non-italic font-light">Exchange</span>
+              </h1>
+              <p className="text-xl md:text-2xl text-gray-500 font-medium leading-tight mb-12 max-w-xl">
+                The official trading network. <span className="text-black">Secure, fast, and exclusively for campus.</span>
+              </p>
 
-            <div className="flex flex-wrap gap-4">
-              <button 
-                onClick={() => {
-                  if (!user) {
-                    signIn();
-                  } else if (!profile) {
-                    navigate('/setup-profile');
-                  } else {
-                    navigate('/sell');
-                  }
-                }} 
-                className="px-10 py-5 bg-black text-white font-black uppercase tracking-widest text-xs rounded-2xl shadow-[0_20px_50px_rgba(0,0,0,0.2)] hover:bg-gray-900 hover:scale-[1.02] active:scale-95 transition-all"
-              >
-                Start Listing
-              </button>
-              
-              {!user && (
+              <div className="flex flex-wrap gap-4">
                 <button 
-                  onClick={() => signIn()}
-                  className="px-10 py-5 bg-white border-2 border-google-blue text-google-blue font-black uppercase tracking-widest text-xs rounded-2xl hover:bg-blue-50 transition-all"
+                  onClick={() => {
+                    if (!user) {
+                      signIn();
+                    } else if (!profile) {
+                      navigate('/setup-profile');
+                    } else {
+                      navigate('/sell');
+                    }
+                  }} 
+                  className="px-10 py-5 bg-black text-white font-black uppercase tracking-widest text-xs rounded-2xl shadow-[0_20px_50px_rgba(0,0,0,0.2)] hover:bg-gray-900 hover:scale-[1.02] active:scale-95 transition-all"
                 >
-                  Join Network
+                  Start Listing
                 </button>
-              )}
-            </div>
-          </motion.div>
+                
+                {!user && (
+                  <button 
+                    onClick={() => signIn()}
+                    className="px-10 py-5 bg-white border-2 border-google-blue text-google-blue font-black uppercase tracking-widest text-xs rounded-2xl hover:bg-blue-50 transition-all"
+                  >
+                    Join Network
+                  </button>
+                )}
+              </div>
+            </motion.div>
+          </div>
+          <div className="lg:mt-4">
+            <StatusUpdateBanner />
+          </div>
         </div>
       </section>
 
