@@ -166,6 +166,7 @@ async function startServer() {
 
       await productRef.update({ 
         status: 'active',
+        createdAt: admin.firestore.FieldValue.serverTimestamp(),
         expiresAt: admin.firestore.Timestamp.fromDate(newExpiry),
         updatedAt: admin.firestore.FieldValue.serverTimestamp()
       });
