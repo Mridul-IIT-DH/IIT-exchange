@@ -173,7 +173,11 @@ async function startServer() {
       res.send(`<!DOCTYPE html><html><head><title>Relisted</title><script src="https://cdn.tailwindcss.com"></script></head><body class="bg-gray-50 flex items-center justify-center min-h-screen p-4"><div class="max-w-md w-full bg-white rounded-3xl shadow-2xl p-10 text-center"><div class="w-20 h-20 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-6"><svg class="w-10 h-10 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path></svg></div><h1 class="text-3xl font-black text-black italic uppercase tracking-tight mb-2">Relisted!</h1><p class="text-gray-500 font-medium mb-8">Your item "${productDoc.data()?.title}" is back on the market.</p><a href="/" class="inline-block px-10 py-4 bg-black text-white font-black uppercase tracking-widest text-xs rounded-2xl hover:scale-105 transition-transform">Back to Market</a></div></body></html>`);
     } catch (error: any) {
       console.error("[Magic Link RELIST Error]:", error);
-      res.status(500).send("Error relisting item.");
+      res.status(500).json({ 
+        error: "Error relisting item.",
+        message: error.message,
+        code: error.code || 'UNKNOWN_ERROR'
+      });
     }
   });
 
@@ -199,7 +203,11 @@ async function startServer() {
       res.send(`<!DOCTYPE html><html><head><title>Sold</title><script src="https://cdn.tailwindcss.com"></script></head><body class="bg-gray-50 flex items-center justify-center min-h-screen p-4"><div class="max-w-md w-full bg-white rounded-3xl shadow-2xl p-10 text-center"><div class="w-20 h-20 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-6"><svg class="w-10 h-10 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"></path></svg></div><h1 class="text-3xl font-black text-black italic uppercase tracking-tight mb-2">Listing Sold!</h1><p class="text-gray-500 font-medium mb-8">Thanks for keeping the community active.</p><a href="/" class="inline-block px-10 py-4 bg-black text-white font-black uppercase tracking-widest text-xs rounded-2xl hover:scale-105 transition-transform">Back to Market</a></div></body></html>`);
     } catch (error: any) {
       console.error("[Magic Link SOLD Error]:", error);
-      res.status(500).send("Error marking as sold.");
+      res.status(500).json({ 
+        error: "Error marking as sold.",
+        message: error.message,
+        code: error.code || 'UNKNOWN_ERROR'
+      });
     }
   });
 
