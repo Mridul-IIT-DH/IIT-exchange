@@ -3,7 +3,7 @@ import { useParams, Link, useNavigate } from 'react-router-dom';
 import { doc, getDoc, updateDoc, deleteDoc, increment, arrayUnion, arrayRemove } from 'firebase/firestore';
 import { db, handleFirestoreError } from '../lib/firebase';
 import { useAuth } from '../contexts/AuthContext';
-import { cn } from '../lib/utils';
+import { cn, toSafeDate } from '../lib/utils';
 import { IndianRupee, ShieldAlert, Phone, Mail, ChevronLeft, ChevronRight, Eye, MousePointerClick, ShieldCheck, Heart, Tag, Copy } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 import toast from 'react-hot-toast';
@@ -223,7 +223,7 @@ export default function ProductDetail() {
                 </h1>
                 <div className="flex items-center gap-4 mt-4 flex-wrap">
                   <p className="text-[10px] font-black text-black uppercase tracking-[0.2em] italic">
-                    Listed {formatDistanceToNow(product.createdAt, { addSuffix: true })}
+                    Listed {formatDistanceToNow(toSafeDate(product.createdAt), { addSuffix: true })}
                   </p>
                   {product.contactClicks > 0 && (
                     <span className="text-[10px] bg-orange-50 text-orange-600 border border-orange-100 px-3 py-1 rounded-full font-black flex items-center gap-1.5 uppercase tracking-widest italic" title={`${product.contactClicks} people were interested enough to reveal contact info`}>

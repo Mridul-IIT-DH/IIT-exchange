@@ -1,11 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { doc, setDoc, updateDoc, increment, getDoc, collection, query, where, getCountFromServer, getDocs } from 'firebase/firestore';
+import { doc, setDoc, updateDoc, increment, getDoc, collection, query, where, getCountFromServer, getDocs, serverTimestamp } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 import { useAuth } from '../contexts/AuthContext';
 import { IndianRupee, ImagePlus, X, AlertCircle, Camera } from 'lucide-react';
 import toast from 'react-hot-toast';
 import imageCompression from 'browser-image-compression';
+import { toSafeDate } from '../lib/utils';
 
 import { motion, AnimatePresence } from 'motion/react';
 
@@ -153,7 +154,7 @@ export default function Sell() {
           const q = query(
             collection(db, 'products'),
             where('sellerId', '==', user.uid),
-            where('createdAt', '>=', midnight.getTime())
+            where('createdAt', '>=', midnight)
           );
           const snapshot = await getCountFromServer(q);
           countToday = snapshot.data().count;
@@ -164,7 +165,7 @@ export default function Sell() {
             where('sellerId', '==', user.uid)
           );
           const snap = await getDocs(fallbackQ);
-          countToday = snap.docs.filter(d => d.data().createdAt >= midnight.getTime()).length;
+          countToday = snap.docs.filter(d => toSafeDate(d.data().createdAt).getTime() >= midnight.getTime()).length;
         }
 
         if (countToday >= 10) {
@@ -283,7 +284,7 @@ export default function Sell() {
           price: numPrice,
           isPriceNegotiable: isNegotiable || numPrice === 0,
           images: finalImageUrls,
-          updatedAt: Date.now(),
+          updatedAt: serverTimestamp(),
         };
         
         await updateDoc(doc(db, 'products', id), updateData);
@@ -302,12 +303,12 @@ export default function Sell() {
           sellerName: profile.name,
           sellerEmail: profile.email,
           sellerPhone: profile.phone,
-          createdAt: Date.now(),
-          expiresAt: Date.now() + 10 * 24 * 60 * 60 * 1000,
+          createdAt: serverTimestamp(),
+          expiresAt: new Date(Date.now() + 10 * 24 * 60 * 60 * 1000),
           status: 'active',
           contactClicks: 0,
           views: 0,
-          updatedAt: Date.now()
+          updatedAt: serverTimestamp()
         };
 
         await setDoc(doc(db, 'products', productId), productData);

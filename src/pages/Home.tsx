@@ -4,7 +4,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { db } from '../lib/firebase';
 import { useAuth } from '../contexts/AuthContext';
 import { formatDistanceToNow } from 'date-fns';
-import { cn } from '../lib/utils';
+import { cn, toSafeDate } from '../lib/utils';
 import { PackageSearch, IndianRupee, Search, Heart, Info } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import toast from 'react-hot-toast';
@@ -371,7 +371,7 @@ export default function Home() {
                     
                     {/* Status Tags */}
                     <div className="absolute top-4 left-4 flex flex-col gap-2 z-10">
-                      {Date.now() - product.createdAt < 24 * 60 * 60 * 1000 && (
+                      {Date.now() - toSafeDate(product.createdAt).getTime() < 24 * 60 * 60 * 1000 && (
                         <motion.span 
                           initial={{ x: -20, opacity: 0 }}
                           animate={{ x: 0, opacity: 1 }}
@@ -427,7 +427,7 @@ export default function Home() {
                       <span className="truncate max-w-[55%]">
                         {product.sellerName.length > 15 ? `${product.sellerName.substring(0, 12)}...` : product.sellerName}
                       </span>
-                      <span className="shrink-0 ml-2">{formatDistanceToNow(product.createdAt, { addSuffix: true }).replace('about ', '')}</span>
+                      <span className="shrink-0 ml-2">{formatDistanceToNow(toSafeDate(product.createdAt), { addSuffix: true }).replace('about ', '')}</span>
                     </div>
                   </div>
                 </Link>

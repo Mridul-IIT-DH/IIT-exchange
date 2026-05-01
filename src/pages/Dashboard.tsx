@@ -5,7 +5,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { IndianRupee, Trash2, Tag, Clock, User as UserIcon, Heart, Phone, Edit2, Save, X as CloseIcon, ShieldCheck, Mail, Package, Copy, Eye } from 'lucide-react';
 import { formatDistanceToNow, format } from 'date-fns';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
-import { cn, isValidPhoneNumber } from '../lib/utils';
+import { cn, isValidPhoneNumber, toSafeDate } from '../lib/utils';
 import { motion, AnimatePresence } from 'motion/react';
 import toast from 'react-hot-toast';
 
@@ -79,7 +79,7 @@ export default function Dashboard() {
         refreshProfile(); // Sync global state
       }
 
-      setWishlistProducts(productsData.sort((a, b) => b.createdAt - a.createdAt));
+      setWishlistProducts(productsData.sort((a, b) => toSafeDate(b.createdAt).getTime() - toSafeDate(a.createdAt).getTime()));
     } catch (error) {
       console.error(error);
       toast.error('Failed to load wishlist items');
@@ -334,7 +334,7 @@ export default function Dashboard() {
                             <span className="text-google-blue flex items-center bg-blue-50 px-3 py-1 rounded-full">
                               {product.isPriceNegotiable && product.price === 0 ? "DISCUSS" : <><IndianRupee size={12} className="mr-0.5"/> {product.price.toLocaleString()}</>}
                             </span>
-                            <span className="flex items-center gap-1.5"><Clock size={12} /> {format(product.createdAt, 'MMM d, yyyy')}</span>
+                            <span className="flex items-center gap-1.5"><Clock size={12} /> {format(toSafeDate(product.createdAt), 'MMM d, yyyy')}</span>
                             {product.contactClicks > 0 && (
                               <span className="text-google-blue flex items-center gap-1.5" title="Number of people who revealed your contact info">
                                 <Eye size={12} /> {product.contactClicks} REVEALS
@@ -342,7 +342,7 @@ export default function Dashboard() {
                             )}
                             {listingsSubTab === 'active' && (
                               <span className="text-amber-500 flex items-center gap-1.5">
-                                <Clock size={12} /> {formatDistanceToNow(product.expiresAt, { addSuffix: true }).toUpperCase()}
+                                <Clock size={12} /> {formatDistanceToNow(toSafeDate(product.expiresAt), { addSuffix: true }).toUpperCase()}
                               </span>
                             )}
                           </div>

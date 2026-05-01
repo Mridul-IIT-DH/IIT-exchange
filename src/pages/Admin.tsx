@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { collection, query, orderBy, getDocs, doc, deleteDoc, updateDoc, getCountFromServer, where, getDocsFromServer } from 'firebase/firestore';
+import { collection, query, orderBy, getDocs, doc, deleteDoc, updateDoc, getCountFromServer, where, getDocsFromServer, serverTimestamp } from 'firebase/firestore';
 import { db, handleFirestoreError } from '../lib/firebase';
 import { useAuth } from '../contexts/AuthContext';
 import { useNavigate } from 'react-router-dom';
@@ -20,7 +20,7 @@ import {
 } from 'lucide-react';
 import { format } from 'date-fns';
 import toast from 'react-hot-toast';
-import { cn } from '../lib/utils';
+import { cn, toSafeDate } from '../lib/utils';
 
 type Tab = 'listings' | 'users';
 
@@ -64,8 +64,7 @@ export default function Admin() {
 
   const formatSafeDate = (date: any, formatStr: string) => {
     try {
-      if (!date) return 'N/A';
-      const d = typeof date.toDate === 'function' ? date.toDate() : new Date(date);
+      const d = toSafeDate(date);
       return format(d, formatStr);
     } catch (e) {
       return 'Invalid Date';
@@ -187,7 +186,7 @@ export default function Admin() {
     try {
       await updateDoc(doc(db, 'products', id), { 
         status: 'sold',
-        updatedAt: Date.now()
+        updatedAt: serverTimestamp()
       });
       toast.success("Listing marked as sold");
       fetchData();
