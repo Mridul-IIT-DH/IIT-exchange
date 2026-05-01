@@ -9,6 +9,8 @@ import dotenv from "dotenv";
 import admin from "firebase-admin";
 import helmet from "helmet";
 import rateLimit from "express-rate-limit";
+import { sendListingVerificationEmail } from "./server/email.ts";
+import { generateMagicToken, verifyMagicToken } from "./server/tokens.ts";
 
 // Load environment variables for development
 dotenv.config();
@@ -22,14 +24,84 @@ const upload = multer({
 });
 
 // Enterprise Security: Initialize Firebase Admin for authenticating backend requests.
-try {
-  if (admin.apps.length === 0) {
-    admin.initializeApp({
-      projectId: "iit-exchange-368e9"
-    });
+const initializeFirebaseAdmin = () => {
+  try {
+    if (admin.apps.length > 0) return admin.app();
+
+    const serviceAccountKey = process.env.FIREBASE_SERVICE_ACCOUNT_KEY;
+    const projectId = "iit-exchange-368e9";
+    
+    if (serviceAccountKey) {
+      try {
+        let keyContent = serviceAccountKey.trim();
+        
+        // Remove surrounding quotes if present (common issue when pasting into env var fields)
+        if (keyContent.startsWith('"') && keyContent.endsWith('"')) {
+          keyContent = keyContent.substring(1, keyContent.length - 1);
+        }
+        
+        // Handle cases where the JSON might be escaped (e.g. \" instead of ")
+        if (keyContent.includes('\\"')) {
+          keyContent = keyContent.replace(/\\"/g, '"');
+        }
+
+        // If it doesn't look like JSON (starts with {), try base64 decoding
+        if (!keyContent.startsWith('{')) {
+          try {
+            console.log("FIREBASE_SERVICE_ACCOUNT_KEY does not start with '{'. Attempting base64 decode...");
+            keyContent = Buffer.from(keyContent, 'base64').toString('utf8');
+          } catch (decodeError) {
+            console.error("FIREBASE_SERVICE_ACCOUNT_KEY failed base64 decoding.");
+          }
+        }
+
+        const serviceAccount = JSON.parse(keyContent);
+        const credProjectId = serviceAccount.project_id;
+        
+        console.log(`[Firebase Admin] Attempting to initialize for project: ${credProjectId || projectId}`);
+        
+        if (credProjectId && credProjectId !== projectId) {
+          console.warn(`[Firebase Admin] Warning: Service account project_id (${credProjectId}) does not match hardcoded projectId (${projectId}). Using ${credProjectId}.`);
+        }
+
+        return admin.initializeApp({
+          credential: admin.credential.cert(serviceAccount),
+          projectId: credProjectId || projectId
+        });
+      } catch (e: any) {
+        console.error("[Firebase Admin] Failed to parse FIREBASE_SERVICE_ACCOUNT_KEY:", e.message);
+        console.warn("[Firebase Admin] Falling back to application default credentials. This will likely cause PERMISSION_DENIED on server-side Firestore calls.");
+        return admin.initializeApp({
+          projectId: projectId
+        });
+      }
+    } else {
+      console.warn("[Firebase Admin] FIREBASE_SERVICE_ACCOUNT_KEY is missing. Using application default credentials.");
+      return admin.initializeApp({
+        projectId: projectId
+      });
+    }
+  } catch (error: any) {
+    if (error.code === 'app/duplicate-app') {
+      return admin.app();
+    }
+    console.error("Firebase admin initialization error:", error);
+    throw error;
   }
-} catch (error: any) {
-  console.error("Firebase admin initialization error:", error);
+};
+
+const firebaseAdminApp = initializeFirebaseAdmin();
+const adminDb = admin.firestore();
+
+async function isAdminUser(uid: string, email?: string) {
+  if (email === 'cs24mt002@iitdh.ac.in') return true;
+  try {
+    const adminDoc = await adminDb.collection('admins').doc(uid).get();
+    return adminDoc.exists;
+  } catch (error) {
+    console.error("[Admin Check Error]:", error);
+    return false;
+  }
 }
 
 async function requireAuth(req: express.Request, res: express.Response, next: express.NextFunction) {
@@ -74,6 +146,63 @@ async function startServer() {
     crossOriginResourcePolicy: { policy: "cross-origin" }
   }));
 
+  // --- MAGIC LINK ROUTES (TOP PRIORITY) ---
+  app.get("/api/confirm-relist", async (req, res) => {
+    console.log(`[Magic Link] RELIST hit: ${req.originalUrl}`);
+    try {
+      const { token } = req.query;
+      if (!token || typeof token !== 'string') return res.status(400).send("Invalid token");
+
+      const payload = verifyMagicToken(token);
+      if (!payload || payload.action !== 'relist') return res.status(400).send("Invalid or expired token");
+
+      const productRef = adminDb.collection('products').doc(payload.productId);
+      const productDoc = await productRef.get();
+
+      if (!productDoc.exists) return res.status(404).send("Listing no longer exists");
+
+      const newExpiry = new Date();
+      newExpiry.setDate(newExpiry.getDate() + 10);
+
+      await productRef.update({ 
+        status: 'active',
+        expiresAt: admin.firestore.Timestamp.fromDate(newExpiry),
+        updatedAt: admin.firestore.FieldValue.serverTimestamp()
+      });
+
+      res.send(`<!DOCTYPE html><html><head><title>Relisted</title><script src="https://cdn.tailwindcss.com"></script></head><body class="bg-gray-50 flex items-center justify-center min-h-screen p-4"><div class="max-w-md w-full bg-white rounded-3xl shadow-2xl p-10 text-center"><div class="w-20 h-20 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-6"><svg class="w-10 h-10 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path></svg></div><h1 class="text-3xl font-black text-black italic uppercase tracking-tight mb-2">Relisted!</h1><p class="text-gray-500 font-medium mb-8">Your item "${productDoc.data()?.title}" is back on the market.</p><a href="/" class="inline-block px-10 py-4 bg-black text-white font-black uppercase tracking-widest text-xs rounded-2xl hover:scale-105 transition-transform">Back to Market</a></div></body></html>`);
+    } catch (error: any) {
+      console.error("[Magic Link RELIST Error]:", error);
+      res.status(500).send("Error relisting item.");
+    }
+  });
+
+  app.get("/api/confirm-sold", async (req, res) => {
+    console.log(`[Magic Link] SOLD hit: ${req.originalUrl}`);
+    try {
+      const { token } = req.query;
+      if (!token || typeof token !== 'string') return res.status(400).send("Invalid token");
+
+      const payload = verifyMagicToken(token);
+      if (!payload || payload.action !== 'mark_sold') return res.status(400).send("Invalid or expired token");
+
+      const productRef = adminDb.collection('products').doc(payload.productId);
+      const productDoc = await productRef.get();
+
+      if (!productDoc.exists) return res.status(404).send("Listing no longer exists");
+
+      await productRef.update({ 
+        status: 'sold',
+        updatedAt: admin.firestore.FieldValue.serverTimestamp()
+      });
+
+      res.send(`<!DOCTYPE html><html><head><title>Sold</title><script src="https://cdn.tailwindcss.com"></script></head><body class="bg-gray-50 flex items-center justify-center min-h-screen p-4"><div class="max-w-md w-full bg-white rounded-3xl shadow-2xl p-10 text-center"><div class="w-20 h-20 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-6"><svg class="w-10 h-10 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"></path></svg></div><h1 class="text-3xl font-black text-black italic uppercase tracking-tight mb-2">Listing Sold!</h1><p class="text-gray-500 font-medium mb-8">Thanks for keeping the community active.</p><a href="/" class="inline-block px-10 py-4 bg-black text-white font-black uppercase tracking-widest text-xs rounded-2xl hover:scale-105 transition-transform">Back to Market</a></div></body></html>`);
+    } catch (error: any) {
+      console.error("[Magic Link SOLD Error]:", error);
+      res.status(500).send("Error marking as sold.");
+    }
+  });
+
   // Enterprise Security: Rate Limiting
   const apiLimiter = rateLimit({
     windowMs: 15 * 60 * 1000, 
@@ -92,11 +221,17 @@ async function startServer() {
     message: { error: 'Upload limit exceeded, please try again in an hour.' }
   });
 
-  app.use('/api/', apiLimiter);
+  app.use('/api', apiLimiter);
 
   app.use(express.json());
 
-  // Initialize Cloudinary
+  // Logging middleware for API routes to debug 404s
+  app.use('/api', (req, res, next) => {
+    console.log(`[API Request] Method=${req.method} Path=${req.path} OriginalUrl=${req.originalUrl}`);
+    next();
+  });
+
+  // Initialized Cloudinary
   cloudinary.config({
     cloud_name: process.env.VITE_CLOUDINARY_CLOUD_NAME,
     api_key: process.env.CLOUDINARY_API_KEY,
@@ -233,6 +368,177 @@ async function startServer() {
       res.status(500).json({ error: "Failed to fetch status updates." });
     }
   });
+
+  // Diagnostic: Check Firebase Admin Health
+  app.get("/api/admin/health", async (req, res) => {
+    try {
+      const db = admin.firestore();
+      const snapshot = await db.collection('products').limit(1).get();
+      
+      let keyStatus = "Missing";
+      if (process.env.FIREBASE_SERVICE_ACCOUNT_KEY) {
+        keyStatus = "Present (Length: " + process.env.FIREBASE_SERVICE_ACCOUNT_KEY.length + ")";
+      }
+
+      res.json({ 
+        status: 'ok', 
+        message: 'Firebase Admin is healthy and has Firestore access.',
+        listingsFound: snapshot.size,
+        apps: admin.apps.length,
+        env: {
+          projectId: "iit-exchange-368e9",
+          keyStatus: keyStatus
+        }
+      });
+    } catch (error: any) {
+      console.error("[Admin Health Check Failed]:", error);
+      res.status(500).json({ 
+        status: 'error', 
+        error: error.message,
+        code: error.code,
+        details: error.details,
+        hint: "Check FIREBASE_SERVICE_ACCOUNT_KEY in settings. Ensure it is the full JSON string from the service account key file."
+      });
+    }
+  });
+
+  // Magic Link: Send confirmation email (ADMIN ONLY)
+  app.post("/api/listings/:id/send-verification", requireAuth, async (req, res) => {
+    try {
+      const { id } = req.params;
+      const user = (req as any).user;
+
+      // Strict Admin Check
+      if (!(await isAdminUser(user.uid, user.email))) {
+        return res.status(403).json({ error: "Forbidden: Only admins can trigger manual verifications" });
+      }
+      
+      const productDoc = await adminDb.collection('products').doc(id).get();
+      if (!productDoc.exists) {
+        return res.status(404).json({ error: "Product not found" });
+      }
+      
+      const product = productDoc.data();
+      if (!product) throw new Error("Product data missing");
+
+      // Generate tokens for both actions
+      const soldToken = generateMagicToken({ productId: id, sellerId: product.sellerId, action: 'mark_sold' });
+      const relistToken = generateMagicToken({ productId: id, sellerId: product.sellerId, action: 'relist' });
+
+      // Use PUBLIC_URL if available, otherwise derive from request
+      const baseUrl = process.env.PUBLIC_URL 
+        ? (process.env.PUBLIC_URL.endsWith('/') ? process.env.PUBLIC_URL.slice(0, -1) : process.env.PUBLIC_URL)
+        : `${req.headers['x-forwarded-proto'] || 'http'}://${req.headers.host}`;
+
+      const links = {
+        sold: `${baseUrl}/api/confirm-sold?token=${soldToken}`,
+        relist: `${baseUrl}/api/confirm-relist?token=${relistToken}`
+      };
+
+      const { error } = await sendListingVerificationEmail(
+        product.sellerEmail, 
+        {
+          title: product.title,
+          price: product.price,
+          imageUrl: product.images?.[0] || null,
+          createdAt: product.createdAt,
+          url: `${baseUrl}/product/${id}`
+        },
+        links
+      );
+
+      if (error) {
+        console.error("[Resend Error Object]:", JSON.stringify(error, null, 2));
+        return res.status(400).json({ 
+          error: "Email verification failed", 
+          details: (error as any).message || "Validation error from Resend"
+        });
+      }
+
+      res.json({ success: true, message: "Confirmation email sent" });
+    } catch (error: any) {
+      console.error("[Magic Link Send Error]:", error);
+      res.status(500).json({ error: "Failed to send confirmation email", details: error.message });
+    }
+  });
+
+  // The Sentinel: Automation Trigger (Admin Only)
+  app.post("/api/admin/trigger-sentinel", requireAuth, async (req, res) => {
+    try {
+      const user = (req as any).user;
+      if (!(await isAdminUser(user.uid, user.email))) {
+        return res.status(403).json({ error: "Forbidden" });
+      }
+
+      const results = await runSentinelJob(req);
+      res.json({ success: true, results });
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  async function runSentinelJob(req?: express.Request) {
+    console.log("[Sentinel] Starting daily expiry scan...");
+    const now = new Date();
+    const expiredSnap = await adminDb.collection('products')
+      .where('status', '==', 'active')
+      .where('expiresAt', '<=', admin.firestore.Timestamp.fromDate(now))
+      .get();
+
+    const stats = { scanned: expiredSnap.size, updated: 0, emailsSent: 0, errors: 0 };
+
+    for (const doc of expiredSnap.docs) {
+      try {
+        const product = doc.data();
+        
+        // 1. Mark as expired
+        await doc.ref.update({ status: 'expired' });
+        stats.updated++;
+
+        // 2. Generate and send magic links
+        const soldToken = generateMagicToken({ productId: doc.id, sellerId: product.sellerId, action: 'mark_sold' });
+        const relistToken = generateMagicToken({ productId: doc.id, sellerId: product.sellerId, action: 'relist' });
+
+        // Use PUBLIC_URL if available, otherwise derive from request or fallback
+        const baseUrl = process.env.PUBLIC_URL 
+          ? (process.env.PUBLIC_URL.endsWith('/') ? process.env.PUBLIC_URL.slice(0, -1) : process.env.PUBLIC_URL)
+          : (req ? `${req.headers['x-forwarded-proto'] || 'http'}://${req.headers.host}` : 'https://iitdh.market');
+        
+        const links = {
+          sold: `${baseUrl}/api/confirm-sold?token=${soldToken}`,
+          relist: `${baseUrl}/api/confirm-relist?token=${relistToken}`
+        };
+
+        const { error } = await sendListingVerificationEmail(
+          product.sellerEmail, 
+          {
+            title: product.title,
+            price: product.price,
+            imageUrl: product.images?.[0] || null,
+            createdAt: product.createdAt,
+            url: `${baseUrl}/product/${doc.id}`
+          },
+          links
+        );
+
+        if (!error) stats.emailsSent++;
+        else console.warn(`[Sentinel] Email failed for ${doc.id}:`, error);
+
+      } catch (err) {
+        console.error(`[Sentinel] Job failed for doc ${doc.id}:`, err);
+        stats.errors++;
+      }
+    }
+
+    console.log("[Sentinel] Job completed:", stats);
+    return stats;
+  }
+
+  // Self-Triggering Loop (Runs every 24 hours)
+  const sentinelInterval = 24 * 60 * 60 * 1000;
+  setInterval(() => {
+    runSentinelJob().catch(e => console.error("[Sentinel Scheduled Error]:", e));
+  }, sentinelInterval);
 
   // --- API GUARDIAN ---
   // Ensure any unmatched /api calls or internal errors don't drift into Vite fallback

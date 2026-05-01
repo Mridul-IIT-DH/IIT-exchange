@@ -14,10 +14,13 @@ import {
   RefreshCw,
   AlertTriangle,
   Edit3,
-  Tag
+  Tag,
+  Mail,
+  Zap
 } from 'lucide-react';
 import { format } from 'date-fns';
 import toast from 'react-hot-toast';
+import { cn } from '../lib/utils';
 
 type Tab = 'listings' | 'users';
 
@@ -49,6 +52,8 @@ export default function Admin() {
   const [searchQuery, setSearchQuery] = useState('');
   const [listingToDelete, setListingToDelete] = useState<{id: string, images?: string[]} | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [sendingVerificationId, setSendingVerificationId] = useState<string | null>(null);
+  const [isRunningSentinel, setIsRunningSentinel] = useState(false);
 
   useEffect(() => {
     if (!authLoading && !isAdmin) {
@@ -191,6 +196,53 @@ export default function Admin() {
     }
   };
 
+  const handleSendVerification = async (id: string) => {
+    setSendingVerificationId(id);
+    try {
+      const idToken = await user?.getIdToken();
+      const response = await fetch(`/api/listings/${id}/send-verification`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${idToken}`
+        }
+      });
+      
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.error || 'Verification trigger failed');
+      
+      toast.success("Verification email sent to seller");
+    } catch (error: any) {
+      toast.error(error.message);
+    } finally {
+      setSendingVerificationId(null);
+    }
+  };
+
+  const handleTriggerSentinel = async () => {
+    if (!window.confirm("Run daily expiration scan now? This will notify all sellers with expiring items.")) return;
+    
+    setIsRunningSentinel(true);
+    try {
+      const idToken = await user?.getIdToken();
+      const response = await fetch('/api/admin/trigger-sentinel', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${idToken}`
+        }
+      });
+      
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.error || 'Sentinel trigger failed');
+      
+      toast.success(`Scan Complete: ${data.results.updated} expired, ${data.results.emailsSent} emails sent.`);
+      fetchData();
+    } catch (error: any) {
+      toast.error(error.message);
+    } finally {
+      setIsRunningSentinel(false);
+    }
+  };
+
   if (authLoading || !isAdmin) {
     return (
       <div className="flex flex-col items-center justify-center h-64 gap-4">
@@ -239,14 +291,26 @@ export default function Admin() {
             <p className="text-gray-900 font-black text-[10px] uppercase tracking-[0.2em] italic">Campus Infrastructure Management</p>
           </div>
         </div>
-        <motion.button 
-          whileHover={{ scale: 1.02 }}
-          whileTap={{ scale: 0.98 }}
-          onClick={fetchData}
-          className="flex items-center gap-3 px-6 py-3 bg-white border border-gray-100 rounded-2xl text-gray-900 shadow-xl shadow-gray-200/50 font-black text-xs uppercase tracking-widest hover:border-blue-200 transition-all italic"
-        >
-          <RefreshCw size={14} className={loading ? "animate-spin" : ""} strokeWidth={3} /> Synchronize Data
-        </motion.button>
+        <div className="flex flex-wrap gap-4">
+          <motion.button 
+            whileHover={{ scale: 1.02 }}
+            whileTap={{ scale: 0.98 }}
+            onClick={fetchData}
+            className="flex items-center gap-3 px-6 py-3 bg-white border border-gray-100 rounded-2xl text-gray-900 shadow-xl shadow-gray-200/50 font-black text-xs uppercase tracking-widest hover:border-blue-200 transition-all italic"
+          >
+            <RefreshCw size={14} className={loading ? "animate-spin" : ""} strokeWidth={3} /> Synchronize Data
+          </motion.button>
+          
+          <motion.button 
+            whileHover={{ scale: 1.02 }}
+            whileTap={{ scale: 0.98 }}
+            onClick={handleTriggerSentinel}
+            disabled={isRunningSentinel}
+            className="flex items-center gap-3 px-6 py-3 bg-google-blue text-white rounded-2xl shadow-xl shadow-blue-100 font-black text-xs uppercase tracking-widest hover:bg-blue-700 transition-all italic disabled:opacity-50"
+          >
+            <Zap size={14} className={isRunningSentinel ? "animate-pulse" : ""} strokeWidth={3} /> Run Sentinel
+          </motion.button>
+        </div>
       </motion.div>
 
       {/* Stats Grid */}
@@ -389,13 +453,30 @@ export default function Admin() {
                             <Edit3 size={16} />
                           </button>
                           {l.status === 'active' && (
-                            <button 
-                              onClick={() => handleMarkSold(l.id)}
-                              className="p-2 bg-green-50 text-google-green hover:bg-green-100 rounded-lg transition-all active:scale-90 border border-green-100"
-                              title="Mark as Sold"
-                            >
-                              <Tag size={16} />
-                            </button>
+                            <>
+                              <button 
+                                onClick={() => handleSendVerification(l.id)}
+                                disabled={sendingVerificationId === l.id}
+                                className={cn(
+                                  "p-2 bg-purple-50 text-purple-600 hover:bg-purple-100 rounded-lg transition-all active:scale-90 border border-purple-100",
+                                  sendingVerificationId === l.id && "animate-pulse"
+                                )}
+                                title="Send Verification Link"
+                              >
+                                {sendingVerificationId === l.id ? (
+                                  <RefreshCw size={16} className="animate-spin" />
+                                ) : (
+                                  <Mail size={16} />
+                                )}
+                              </button>
+                              <button 
+                                onClick={() => handleMarkSold(l.id)}
+                                className="p-2 bg-green-50 text-google-green hover:bg-green-100 rounded-lg transition-all active:scale-90 border border-green-100"
+                                title="Mark as Sold"
+                              >
+                                <Tag size={16} />
+                              </button>
+                            </>
                           )}
                           <button 
                             onClick={() => setListingToDelete({ id: l.id, images: l.images })}
@@ -455,6 +536,14 @@ export default function Admin() {
                         >
                           <Edit3 size={14} />
                         </button>
+                        {l.status === 'active' && (
+                          <button 
+                            onClick={() => handleSendVerification(l.id)}
+                            className="p-2 bg-purple-50 text-purple-600 rounded-lg"
+                          >
+                            <Mail size={14} />
+                          </button>
+                        )}
                         <button 
                           onClick={() => setListingToDelete({ id: l.id, images: l.images })}
                           className="p-2 bg-red-50 text-google-red rounded-lg"
