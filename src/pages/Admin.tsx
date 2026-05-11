@@ -197,6 +197,25 @@ export default function Admin() {
     }
   };
 
+  const handleRelist = async (id: string) => {
+    try {
+      const now = new Date();
+      const expiresAt = new Date();
+      expiresAt.setDate(now.getDate() + 10);
+
+      await updateDoc(doc(db, 'products', id), { 
+        createdAt: now,
+        expiresAt: expiresAt,
+        status: 'active',
+        updatedAt: serverTimestamp()
+      });
+      toast.success('Listing relisted by Admin for 10 days!');
+      fetchData();
+    } catch (error: any) {
+      handleFirestoreError(error, OperationType.UPDATE, `products/${id}`);
+    }
+  };
+
   const handleSendVerification = async (id: string) => {
     setSendingVerificationId(id);
     try {
@@ -448,55 +467,74 @@ export default function Admin() {
                         {formatSafeDate(l.createdAt, 'MMM d, h:mm a')}
                       </td>
                       <td className="px-6 py-4 text-right">
-                        <div className="flex justify-end gap-2">
-                          <button 
-                            onClick={() => navigate(`/product/${l.id}`)}
-                            className="p-2 bg-blue-50 text-google-blue hover:bg-blue-100 rounded-lg transition-all active:scale-90"
-                            title="View Listing"
-                          >
-                            <ExternalLink size={16} />
-                          </button>
-                          <button 
-                            onClick={() => navigate(`/edit/${l.id}`)}
-                            className="p-2 bg-blue-50 text-google-blue hover:bg-blue-100 rounded-lg transition-all active:scale-90 border border-blue-100"
-                            title="Edit Listing"
-                          >
-                            <Edit3 size={16} />
-                          </button>
-                          {l.status === 'active' && (
-                            <>
-                              <button 
-                                onClick={() => handleSendVerification(l.id)}
-                                disabled={sendingVerificationId === l.id}
-                                className={cn(
-                                  "p-2 bg-purple-50 text-purple-600 hover:bg-purple-100 rounded-lg transition-all active:scale-90 border border-purple-100",
-                                  sendingVerificationId === l.id && "animate-pulse"
+                          {(() => {
+                            const now = new Date();
+                            const createdAt = toSafeDate(l.createdAt);
+                            const expiresAt = l.expiresAt ? toSafeDate(l.expiresAt) : new Date(createdAt.getTime() + 10 * 24 * 60 * 60 * 1000);
+                            const isExpired = expiresAt < now;
+                            const canRelist = (l.status === 'active' && isExpired) || l.status === 'archived' || l.status === 'expired' || l.status === 'sold';
+
+                            return (
+                              <div className="flex justify-end gap-2">
+                                <button 
+                                  onClick={() => navigate(`/product/${l.id}`)}
+                                  className="p-2 bg-blue-50 text-google-blue hover:bg-blue-100 rounded-lg transition-all active:scale-90"
+                                  title="View Listing"
+                                >
+                                  <ExternalLink size={16} />
+                                </button>
+                                <button 
+                                  onClick={() => navigate(`/edit/${l.id}`)}
+                                  className="p-2 bg-blue-50 text-google-blue hover:bg-blue-100 rounded-lg transition-all active:scale-90 border border-blue-100"
+                                  title="Edit Listing"
+                                >
+                                  <Edit3 size={16} />
+                                </button>
+                                {l.status === 'active' && !isExpired && (
+                                  <>
+                                    <button 
+                                      onClick={() => handleSendVerification(l.id)}
+                                      disabled={sendingVerificationId === l.id}
+                                      className={cn(
+                                        "p-2 bg-purple-50 text-purple-600 hover:bg-purple-100 rounded-lg transition-all active:scale-90 border border-purple-100",
+                                        sendingVerificationId === l.id && "animate-pulse"
+                                      )}
+                                      title="Send Verification Link"
+                                    >
+                                      {sendingVerificationId === l.id ? (
+                                        <RefreshCw size={16} className="animate-spin" />
+                                      ) : (
+                                        <Mail size={16} />
+                                      )}
+                                    </button>
+                                    <button 
+                                      onClick={() => handleMarkSold(l.id)}
+                                      className="p-2 bg-green-50 text-google-green hover:bg-green-100 rounded-lg transition-all active:scale-90 border border-green-100"
+                                      title="Mark as Sold"
+                                    >
+                                      <Tag size={16} />
+                                    </button>
+                                  </>
                                 )}
-                                title="Send Verification Link"
-                              >
-                                {sendingVerificationId === l.id ? (
-                                  <RefreshCw size={16} className="animate-spin" />
-                                ) : (
-                                  <Mail size={16} />
+                                {canRelist && (
+                                  <button 
+                                    onClick={() => handleRelist(l.id)}
+                                    className="p-2 bg-blue-50 text-google-blue hover:bg-blue-100 rounded-lg transition-all active:scale-90 border border-blue-100"
+                                    title="Relist Listing"
+                                  >
+                                    <RefreshCw size={16} />
+                                  </button>
                                 )}
-                              </button>
-                              <button 
-                                onClick={() => handleMarkSold(l.id)}
-                                className="p-2 bg-green-50 text-google-green hover:bg-green-100 rounded-lg transition-all active:scale-90 border border-green-100"
-                                title="Mark as Sold"
-                              >
-                                <Tag size={16} />
-                              </button>
-                            </>
-                          )}
-                          <button 
-                            onClick={() => setListingToDelete({ id: l.id, images: l.images })}
-                            className="p-2 bg-red-50 text-google-red hover:bg-red-100 rounded-lg transition-all active:scale-90 border border-red-100"
-                            title="Delete Listing"
-                          >
-                            <Trash2 size={16} />
-                          </button>
-                        </div>
+                                <button 
+                                  onClick={() => setListingToDelete({ id: l.id, images: l.images })}
+                                  className="p-2 bg-red-50 text-google-red hover:bg-red-100 rounded-lg transition-all active:scale-90 border border-red-100"
+                                  title="Delete Listing"
+                                >
+                                  <Trash2 size={16} />
+                                </button>
+                              </div>
+                            );
+                          })()}
                       </td>
                     </tr>
                   ))}
@@ -545,32 +583,52 @@ export default function Admin() {
                         <p className="text-gray-600">{l.sellerEmail}</p>
                       </div>
                       <div className="flex gap-2">
-                        <button 
-                          onClick={() => navigate(`/product/${l.id}`)}
-                          className="p-2 bg-gray-50 text-gray-500 rounded-lg"
-                        >
-                          <ExternalLink size={14} />
-                        </button>
-                        <button 
-                          onClick={() => navigate(`/edit/${l.id}`)}
-                          className="p-2 bg-gray-50 text-gray-500 rounded-lg"
-                        >
-                          <Edit3 size={14} />
-                        </button>
-                        {l.status === 'active' && (
-                          <button 
-                            onClick={() => handleSendVerification(l.id)}
-                            className="p-2 bg-purple-50 text-purple-600 rounded-lg"
-                          >
-                            <Mail size={14} />
-                          </button>
-                        )}
-                        <button 
-                          onClick={() => setListingToDelete({ id: l.id, images: l.images })}
-                          className="p-2 bg-red-50 text-google-red rounded-lg"
-                        >
-                          <Trash2 size={14} />
-                        </button>
+                        {(() => {
+                           const now = new Date();
+                           const createdAt = toSafeDate(l.createdAt);
+                           const expiresAt = l.expiresAt ? toSafeDate(l.expiresAt) : new Date(createdAt.getTime() + 10 * 24 * 60 * 60 * 1000);
+                           const isExpired = expiresAt < now;
+                           const canRelist = (l.status === 'active' && isExpired) || l.status === 'archived' || l.status === 'expired' || l.status === 'sold';
+
+                           return (
+                             <>
+                                <button 
+                                  onClick={() => navigate(`/product/${l.id}`)}
+                                  className="p-2 bg-gray-50 text-gray-500 rounded-lg"
+                                >
+                                  <ExternalLink size={14} />
+                                </button>
+                                <button 
+                                  onClick={() => navigate(`/edit/${l.id}`)}
+                                  className="p-2 bg-gray-50 text-gray-500 rounded-lg"
+                                >
+                                  <Edit3 size={14} />
+                                </button>
+                                {l.status === 'active' && !isExpired && (
+                                  <button 
+                                    onClick={() => handleSendVerification(l.id)}
+                                    className="p-2 bg-purple-50 text-purple-600 rounded-lg"
+                                  >
+                                    <Mail size={14} />
+                                  </button>
+                                )}
+                                {canRelist && (
+                                  <button 
+                                    onClick={() => handleRelist(l.id)}
+                                    className="p-2 bg-blue-50 text-google-blue rounded-lg"
+                                  >
+                                    <RefreshCw size={14} />
+                                  </button>
+                                )}
+                                <button 
+                                  onClick={() => setListingToDelete({ id: l.id, images: l.images })}
+                                  className="p-2 bg-red-50 text-google-red rounded-lg"
+                                >
+                                  <Trash2 size={14} />
+                                </button>
+                             </>
+                           );
+                        })()}
                       </div>
                     </div>
                   </div>
