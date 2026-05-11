@@ -230,7 +230,17 @@ async function startServer() {
     message: { error: 'Upload limit exceeded, please try again in an hour.' }
   });
 
+  // Stricter limiter for administrative functions
+  const adminLimiter = rateLimit({
+    windowMs: 60 * 60 * 1000, // 1 hour
+    max: 20, // 20 requests per hour per admin IP
+    standardHeaders: true,
+    legacyHeaders: false,
+    message: { error: 'Administrative rate limit exceeded. Please wait an hour.' }
+  });
+
   app.use('/api', apiLimiter);
+  app.use('/api/admin', adminLimiter);
 
   app.use(express.json());
 
@@ -379,37 +389,35 @@ async function startServer() {
   });
 
   // Diagnostic: Check Firebase Admin Health
-  app.get("/api/admin/health", async (req, res) => {
+  app.get("/api/health", async (req, res) => {
     try {
-      const db = admin.firestore();
-      const snapshot = await db.collection('products').limit(1).get();
+      const dbHealth = admin.firestore();
+      const startTime = Date.now();
+      await dbHealth.collection('products').limit(1).get();
+      const latency = Date.now() - startTime;
       
-      let keyStatus = "Missing";
-      if (process.env.FIREBASE_SERVICE_ACCOUNT_KEY) {
-        keyStatus = "Present (Length: " + process.env.FIREBASE_SERVICE_ACCOUNT_KEY.length + ")";
-      }
-
       res.json({ 
         status: 'ok', 
-        message: 'Firebase Admin is healthy and has Firestore access.',
-        listingsFound: snapshot.size,
-        apps: admin.apps.length,
-        env: {
-          projectId: "iit-exchange-368e9",
-          keyStatus: keyStatus
+        uptime: process.uptime(),
+        latency: `${latency}ms`,
+        timestamp: new Date().toISOString(),
+        services: {
+          database: 'healthy',
+          auth: admin.apps.length > 0 ? 'connected' : 'disconnected'
         }
       });
     } catch (error: any) {
-      console.error("[Admin Health Check Failed]:", error);
-      res.status(500).json({ 
+      console.error("[Health Check Failed]:", error);
+      res.status(503).json({ 
         status: 'error', 
         error: error.message,
-        code: error.code,
-        details: error.details,
-        hint: "Check FIREBASE_SERVICE_ACCOUNT_KEY in settings. Ensure it is the full JSON string from the service account key file."
+        timestamp: new Date().toISOString()
       });
     }
   });
+
+  // Diagnostic: Legacy endpoint kept for backward compatibility but redirecting to new one
+  app.get("/api/admin/health", (req, res) => res.redirect('/api/health'));
 
   // Magic Link: Send confirmation email (ADMIN ONLY)
   app.post("/api/listings/:id/send-verification", requireAuth, async (req, res) => {
@@ -487,31 +495,53 @@ async function startServer() {
   });
 
   async function runSentinelJob(req?: express.Request) {
-    console.log("[Sentinel] Starting daily expiry scan...");
+    console.log("[Sentinel] Starting hourly expiry scan...");
     const now = new Date();
     const expiredSnap = await adminDb.collection('products')
       .where('status', '==', 'active')
       .where('expiresAt', '<=', admin.firestore.Timestamp.fromDate(now))
+      .limit(450) // Stay well under the 500 batch limit
       .get();
 
-    const stats = { scanned: expiredSnap.size, updated: 0, emailsSent: 0, errors: 0 };
+    if (expiredSnap.empty) {
+      console.log("[Sentinel] No expired items found.");
+      return { scanned: 0, updated: 0, emailsSent: 0 };
+    }
 
+    const stats = { 
+      scanned: expiredSnap.size, 
+      updated: 0, 
+      emailsSent: 0, 
+      errors: 0,
+      archivedIds: [] as string[] 
+    };
+    const batch = adminDb.batch();
+
+    // 1. Prepare batch updates
+    expiredSnap.docs.forEach(doc => {
+      stats.archivedIds.push(doc.id);
+      batch.update(doc.ref, { 
+        status: 'archived',
+        updatedAt: admin.firestore.FieldValue.serverTimestamp()
+      });
+    });
+
+    // 2. Commit updates atomically
+    try {
+      await batch.commit();
+      stats.updated = expiredSnap.size;
+    } catch (err) {
+      console.error("[Sentinel] Batch commit failed:", err);
+      return { ...stats, error: "Batch commit failed" };
+    }
+
+    // 3. Send notification emails (Asynchronously and individually)
     for (const doc of expiredSnap.docs) {
       try {
         const product = doc.data();
-        
-        // 1. Mark as archived
-        await doc.ref.update({ 
-          status: 'archived',
-          updatedAt: admin.firestore.FieldValue.serverTimestamp()
-        });
-        stats.updated++;
-
-        // 2. Generate and send magic links
         const soldToken = generateMagicToken({ productId: doc.id, sellerId: product.sellerId, action: 'mark_sold' });
         const relistToken = generateMagicToken({ productId: doc.id, sellerId: product.sellerId, action: 'relist' });
 
-        // Use PUBLIC_URL if available, otherwise derive from request or fallback
         const baseUrl = process.env.PUBLIC_URL 
           ? (process.env.PUBLIC_URL.endsWith('/') ? process.env.PUBLIC_URL.slice(0, -1) : process.env.PUBLIC_URL)
           : (req ? `${req.headers['x-forwarded-proto'] || 'http'}://${req.headers.host}` : 'https://iit-exchange-368e9.web.app');
@@ -534,11 +564,8 @@ async function startServer() {
         );
 
         if (!error) stats.emailsSent++;
-        else console.warn(`[Sentinel] Email failed for ${doc.id}:`, error);
-
-      } catch (err) {
-        console.error(`[Sentinel] Job failed for doc ${doc.id}:`, err);
-        stats.errors++;
+      } catch (emailErr) {
+        console.warn(`[Sentinel] Email failed for ${doc.id}:`, emailErr);
       }
     }
 

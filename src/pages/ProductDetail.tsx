@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import { doc, getDoc, updateDoc, deleteDoc, increment, arrayUnion, arrayRemove } from 'firebase/firestore';
-import { db, handleFirestoreError } from '../lib/firebase';
+import { db, handleFirestoreError, OperationType } from '../lib/firebase';
 import { useAuth } from '../contexts/AuthContext';
 import { cn, toSafeDate } from '../lib/utils';
 import { IndianRupee, ShieldAlert, Phone, Mail, ChevronLeft, ChevronRight, Eye, MousePointerClick, ShieldCheck, Heart, Tag, Copy } from 'lucide-react';
@@ -53,7 +53,7 @@ export default function ProductDetail() {
       }
       await refreshProfile();
     } catch (error) {
-      handleFirestoreError(error, 'update', `users/${user.uid}`);
+      handleFirestoreError(error, OperationType.UPDATE, `users/${user.uid}`);
     } finally {
       setWishlistLoading(false);
     }
@@ -79,7 +79,7 @@ export default function ProductDetail() {
           }
         }
       } catch (error) {
-        handleFirestoreError(error, 'get', `products/${id}`);
+        handleFirestoreError(error, OperationType.GET, `products/${id}`);
       } finally {
         setLoading(false);
       }
@@ -101,7 +101,7 @@ export default function ProductDetail() {
       setContactRevealed(true);
       toast.success('Contact info revealed.');
     } catch (error) {
-      handleFirestoreError(error, 'update', `products/${id}`);
+      handleFirestoreError(error, OperationType.UPDATE, `products/${id}`);
     } finally {
       setRevealing(false);
     }

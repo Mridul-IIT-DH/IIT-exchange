@@ -93,8 +93,10 @@ service cloud.firestore {
           (incoming().status == 'sold' && incoming().diff(existing()).affectedKeys().hasOnly(['status', 'updatedAt'])) ||
           // Action: Relist (reset expiry and status)
           ((existing().status == 'archived' || existing().status == 'expired') && incoming().status == 'active' && incoming().diff(existing()).affectedKeys().hasAll(['status', 'expiresAt', 'createdAt']) && incoming().diff(existing()).affectedKeys().hasOnly(['status', 'expiresAt', 'createdAt', 'updatedAt'])) ||
-          // Action: General Edit
-          (incoming().status == existing().status && incoming().diff(existing()).affectedKeys().hasOnly(['title', 'description', 'price', 'productAge', 'images', 'category', 'updatedAt', 'tags', 'isPriceNegotiable', 'isPriceFixed']))
+          // Action: General Edit (Status cannot be changed arbitrarily here)
+          (incoming().status == existing().status && incoming().diff(existing()).affectedKeys().hasOnly(['title', 'description', 'price', 'productAge', 'images', 'category', 'updatedAt', 'tags', 'isPriceNegotiable', 'isPriceFixed'])) ||
+          // Action: Manual Archive (Allow user to archive their own items)
+          (incoming().status == 'archived' && incoming().diff(existing()).affectedKeys().hasOnly(['status', 'updatedAt']))
         )
       ) || (
         // ATOMIC ANALYTICS: Prevents data poisoning in view counts

@@ -1,11 +1,11 @@
 import React, { useEffect, useState } from 'react';
 import { collection, query, where, orderBy, getDocs, doc, updateDoc, deleteDoc, getDoc } from 'firebase/firestore';
-import { db } from '../lib/firebase';
 import { useAuth } from '../contexts/AuthContext';
 import { IndianRupee, Trash2, Tag, Clock, User as UserIcon, Heart, Phone, Edit2, Save, X as CloseIcon, ShieldCheck, Mail, Package, Copy, Eye } from 'lucide-react';
 import { formatDistanceToNow, format } from 'date-fns';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { cn, isValidPhoneNumber, toSafeDate } from '../lib/utils';
+import { db, handleFirestoreError, OperationType } from '../lib/firebase';
 import { motion, AnimatePresence } from 'motion/react';
 import toast from 'react-hot-toast';
 
@@ -28,10 +28,16 @@ export default function Dashboard() {
   const [activeTab, setActiveTab] = useState<'listings' | 'wishlist' | 'profile'>((searchParams.get('tab') as any) || 'listings');
   const [listingsSubTab, setListingsSubTab] = useState<'active' | 'sold' | 'archived'>('active');
   const [listingToDelete, setListingToDelete] = useState<{id: string, images?: string[]} | null>(null);
+  const [now, setNow] = useState(new Date());
 
   // Profile Edit State
   const [isEditingProfile, setIsEditingProfile] = useState(false);
   const [tempPhone, setTempPhone] = useState(profile?.phone || '');
+
+  // Keep 'now' relatively fresh
+  useEffect(() => {
+    setNow(new Date());
+  }, [listingsSubTab, activeTab]);
 
   const fetchMyListings = async () => {
     if (!user) return;
@@ -42,11 +48,11 @@ export default function Dashboard() {
         orderBy('createdAt', 'desc')
       );
       const snapshot = await getDocs(q);
-      const data = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+      const data = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as any));
+      console.log(`[Dashboard] Fetched ${data.length} listings.`, data.map((p: any) => ({ title: p.title, status: p.status, expires: toSafeDate(p.expiresAt).toISOString() })));
       setProducts(data);
     } catch (error) {
-      console.error(error);
-      toast.error('Failed to load listings');
+      handleFirestoreError(error, OperationType.LIST, 'products');
     }
   };
 
@@ -62,12 +68,16 @@ export default function Dashboard() {
       let needsCleanup = false;
 
       for (const prodId of profile.wishlist) {
-        const prodDoc = await getDoc(doc(db, 'products', prodId));
-        if (prodDoc.exists()) {
-          productsData.push({ id: prodDoc.id, ...prodDoc.data() });
-          validWishlistIds.push(prodId);
-        } else {
-          needsCleanup = true;
+        try {
+          const prodDoc = await getDoc(doc(db, 'products', prodId));
+          if (prodDoc.exists()) {
+            productsData.push({ id: prodDoc.id, ...prodDoc.data() });
+            validWishlistIds.push(prodId);
+          } else {
+            needsCleanup = true;
+          }
+        } catch (err) {
+          console.warn(`Could not fetch wishlist item ${prodId}:`, err);
         }
       }
 
@@ -81,8 +91,7 @@ export default function Dashboard() {
 
       setWishlistProducts(productsData.sort((a, b) => toSafeDate(b.createdAt).getTime() - toSafeDate(a.createdAt).getTime()));
     } catch (error) {
-      console.error(error);
-      toast.error('Failed to load wishlist items');
+      handleFirestoreError(error, OperationType.GET, 'users/wishlist');
     } finally {
       setWishlistLoading(false);
     }
@@ -126,15 +135,21 @@ export default function Dashboard() {
   }, [activeTab]);
 
   const handleStatusChange = async (id: string, newStatus: string) => {
+    // Optimistic Update
+    const previousProducts = [...products];
+    setProducts(prev => prev.map(p => p.id === id ? { ...p, status: newStatus, updatedAt: new Date() } : p));
+    
     try {
       await updateDoc(doc(db, 'products', id), { 
         status: newStatus,
         updatedAt: new Date()
       });
       toast.success(`Marked as ${newStatus}`);
-      fetchMyListings();
+      // No need to fetch immediately if optimistic was successful, but good to sync eventually
+      // fetchMyListings(); 
     } catch (error: any) {
-      toast.error(`Failed to update: ${error.message}`);
+      setProducts(previousProducts); // Rollback
+      handleFirestoreError(error, OperationType.UPDATE, `products/${id}`);
     }
   };
 
@@ -144,6 +159,10 @@ export default function Dashboard() {
       toast.error('Please enter a valid 10-digit Indian phone number');
       return;
     }
+    // Optimistic Update
+    const previousProfile = { ...profile };
+    // This is hard to roll back purely in local state if it's in a Context,
+    // so we'll do it normally but show loading.
     try {
       await updateDoc(doc(db, 'users', user.uid), {
         phone: tempPhone.trim()
@@ -152,26 +171,37 @@ export default function Dashboard() {
       setIsEditingProfile(false);
       toast.success('Profile updated successfully');
     } catch (error: any) {
-      toast.error(`Failed to update profile: ${error.message}`);
+      handleFirestoreError(error, OperationType.UPDATE, `users/${user.uid}`);
     }
   };
 
   const handleRelist = async (id: string) => {
-    try {
-      const now = new Date();
-      const expiresAt = new Date();
-      expiresAt.setDate(now.getDate() + 10);
+    const nowLocal = new Date();
+    const expiresAt = new Date();
+    expiresAt.setDate(nowLocal.getDate() + 10);
 
+    // Optimistic Update
+    const previousProducts = [...products];
+    setProducts(prev => prev.map(p => p.id === id ? { 
+      ...p, 
+      status: 'active', 
+      expiresAt: expiresAt,
+      createdAt: nowLocal,
+      updatedAt: nowLocal 
+    } : p));
+
+    try {
       await updateDoc(doc(db, 'products', id), { 
-        createdAt: now,
+        createdAt: nowLocal,
         expiresAt: expiresAt,
         status: 'active',
-        updatedAt: now
+        updatedAt: nowLocal
       });
       toast.success('Listing relisted for 10 days!');
-      fetchMyListings();
+      setNow(new Date()); // Refresh relative times
     } catch (error: any) {
-      toast.error(`Failed to relist: ${error.message}`);
+      setProducts(previousProducts); // Rollback
+      handleFirestoreError(error, OperationType.UPDATE, `products/${id}`);
     }
   };
 
@@ -204,28 +234,32 @@ export default function Dashboard() {
         await refreshProfile();
       }
 
-      toast.success('Listing deleted');
+      toast.success('Listing permanently deleted');
       fetchMyListings();
     } catch (error: any) {
-      toast.error(`Failed to delete: ${error.message}`);
+      handleFirestoreError(error, OperationType.DELETE, `products/${id}`);
     }
   };
 
   if (loading) {
     return (
-      <div className="flex justify-center items-center h-64">
-        <motion.div 
-          initial={{ scale: 0.8, opacity: 0 }}
-          animate={{ scale: 1, opacity: 1 }}
-          transition={snappySpring}
-          className="animate-spin rounded-full h-10 w-10 border-b-2 border-google-blue"
-        ></motion.div>
+      <div className="max-w-5xl mx-auto py-8 text-gray-900 px-4 sm:px-6">
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-12">
+          <div className="space-y-2">
+            <div className="h-10 w-48 bg-gray-200 animate-pulse rounded-xl" />
+            <div className="h-3 w-32 bg-gray-100 animate-pulse rounded-md" />
+          </div>
+        </div>
+        <div className="h-14 w-full bg-gray-100 animate-pulse rounded-2xl mb-10" />
+        <div className="space-y-4">
+          {[1, 2, 3].map(i => (
+            <div key={i} className="h-32 w-full bg-white border border-gray-100 rounded-[32px] animate-pulse" />
+          ))}
+        </div>
       </div>
     );
   }
 
-  const now = new Date();
-  
   const getProductExpirtyStatus = (p: any) => {
     const createdAt = toSafeDate(p.createdAt);
     const expiresAt = p.expiresAt ? toSafeDate(p.expiresAt) : new Date(createdAt.getTime() + 10 * 24 * 60 * 60 * 1000);

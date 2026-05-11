@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { collection, query, orderBy, getDocs, doc, deleteDoc, updateDoc, getCountFromServer, where, getDocsFromServer, serverTimestamp } from 'firebase/firestore';
-import { db, handleFirestoreError } from '../lib/firebase';
+import { db, handleFirestoreError, OperationType } from '../lib/firebase';
 import { useAuth } from '../contexts/AuthContext';
 import { useNavigate } from 'react-router-dom';
 import { 
@@ -16,7 +16,10 @@ import {
   Edit3,
   Tag,
   Mail,
-  Zap
+  Zap,
+  IndianRupee,
+  Activity,
+  Filter
 } from 'lucide-react';
 import { format } from 'date-fns';
 import toast from 'react-hot-toast';
@@ -95,9 +98,9 @@ export default function Admin() {
         getCount(usersRef, 'totalUsers')
       ]);
 
-      const allItems = allProductsSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+      const allItems = allProductsSnap.docs.map(d => ({ id: d.id, ...d.data() } as any));
       const now = new Date();
-      const realActiveCount = allItems.filter(p => {
+      const realActiveCount = allItems.filter((p: any) => {
         const createdAt = toSafeDate(p.createdAt);
         const expiresAt = p.expiresAt ? toSafeDate(p.expiresAt) : new Date(createdAt.getTime() + 10 * 24 * 60 * 60 * 1000);
         return p.status === 'active' && expiresAt >= now;
@@ -125,13 +128,13 @@ export default function Admin() {
           setSiteUsers(items);
           console.log(`Admin [Data]: Successfully loaded ${snap.docs.length} users`);
         } catch (err) {
-          handleFirestoreError(err, 'list', 'users');
+          handleFirestoreError(err, OperationType.LIST, 'users');
         }
       }
 
     } catch (criticalError: any) {
       console.error("Admin [Critical]: Unhandled fetch failure", criticalError);
-      toast.error("Internal Admin Error: Check developer console");
+      handleFirestoreError(criticalError, OperationType.LIST, 'admin/collections');
     } finally {
       setLoading(false);
     }
@@ -190,7 +193,7 @@ export default function Admin() {
       toast.success("Listing marked as sold");
       fetchData();
     } catch (error: any) {
-      toast.error("Update failed: " + error.message);
+      handleFirestoreError(error, OperationType.UPDATE, `products/${id}`);
     }
   };
 

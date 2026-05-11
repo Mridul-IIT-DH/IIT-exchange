@@ -22,36 +22,59 @@ googleProvider.setCustomParameters({
 });
 
 // Enterprise Security: Standardized Firestore Error Reporting
+export enum OperationType {
+  CREATE = 'create',
+  UPDATE = 'update',
+  DELETE = 'delete',
+  LIST = 'list',
+  GET = 'get',
+  WRITE = 'write',
+}
+
 export interface FirestoreErrorInfo {
   error: string;
-  operationType: 'create' | 'update' | 'delete' | 'list' | 'get' | 'write';
+  operationType: OperationType;
   path: string | null;
   authInfo: {
-    userId: string;
-    email: string;
-    emailVerified: boolean;
-    isAnonymous: boolean;
-    providerIds: string[];
+    userId?: string | null;
+    email?: string | null;
+    emailVerified?: boolean | null;
+    isAnonymous?: boolean | null;
+    tenantId?: string | null;
+    providerInfo?: {
+      providerId?: string | null;
+      email?: string | null;
+    }[];
   }
 }
 
-export function handleFirestoreError(error: any, operationType: any, path: string | null = null): never {
-  if (error.code === 'permission-denied') {
-    const errorInfo: FirestoreErrorInfo = {
-      error: error.message,
-      operationType,
-      path,
-      authInfo: {
-        userId: auth.currentUser?.uid || 'anonymous',
-        email: auth.currentUser?.email || 'none',
-        emailVerified: auth.currentUser?.emailVerified || false,
-        isAnonymous: auth.currentUser?.isAnonymous || false,
-        providerIds: auth.currentUser?.providerData.map(p => p.providerId) || [],
-      }
-    };
-    throw new Error(JSON.stringify(errorInfo));
+export function handleFirestoreError(error: any, operationType: OperationType, path: string | null = null): never {
+  const isPermissionError = error.code === 'permission-denied' || error.message?.includes('Missing or insufficient permissions');
+  
+  const errorInfo: FirestoreErrorInfo = {
+    error: error.message || String(error),
+    operationType,
+    path,
+    authInfo: {
+      userId: auth.currentUser?.uid,
+      email: auth.currentUser?.email,
+      emailVerified: auth.currentUser?.emailVerified,
+      isAnonymous: auth.currentUser?.isAnonymous,
+      tenantId: auth.currentUser?.tenantId,
+      providerInfo: auth.currentUser?.providerData?.map(provider => ({
+        providerId: provider.providerId,
+        email: provider.email,
+      })) || []
+    }
+  };
+
+  if (isPermissionError) {
+    console.error('CRITICAL: Firestore Security Violation', JSON.stringify(errorInfo, null, 2));
+  } else {
+    console.error('Firestore Operation Failed:', operationType, path, error);
   }
-  throw error;
+
+  throw new Error(JSON.stringify(errorInfo));
 }
 
 // Enterprise Integrity: Periodic Connectivity Check
