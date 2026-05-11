@@ -214,9 +214,16 @@ export default function Home() {
   }, []);
 
   const filteredProducts = products.filter(p => {
-    if (!searchQuery) return true;
     const q = searchQuery.toLowerCase();
-    return p.title?.toLowerCase().includes(q) || p.description?.toLowerCase().includes(q);
+    const matchesSearch = !searchQuery || p.title?.toLowerCase().includes(q) || p.description?.toLowerCase().includes(q);
+    
+    // Safety Net: Proactively filter out expired or non-active items that haven't been archived by the Sentinel yet
+    const now = new Date();
+    const createdAt = toSafeDate(p.createdAt);
+    const expiresAt = p.expiresAt ? toSafeDate(p.expiresAt) : new Date(createdAt.getTime() + 10 * 24 * 60 * 60 * 1000);
+    const isActuallyActive = p.status === 'active' && expiresAt > now;
+    
+    return matchesSearch && isActuallyActive;
   });
 
   return (

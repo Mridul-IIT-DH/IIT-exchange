@@ -59,10 +59,24 @@ import { doc, getDocFromServer } from 'firebase/firestore';
 export async function testFirestoreConnection() {
   try {
     // Attempt to ping a non-existent doc to verify network/auth path
+    // We use a small delay to allow initial SDK handshake
+    await new Promise(resolve => setTimeout(resolve, 2000));
     await getDocFromServer(doc(db, '_internal_', 'healthcheck'));
+    console.log("Firestore connection verified successfully.");
   } catch (error: any) {
+    // If the error code is 'permission-denied' or 'not-found', it means the server responded.
+    // This confirms connectivity, even if we don't have access to the specific healthcheck path.
+    const isServerReachable = error.code === 'permission-denied' || error.code === 'not-found';
+
+    if (isServerReachable) {
+      console.log("Firestore connectivity verified (Server responded).");
+      return;
+    }
+
     if (error.message.includes('offline') || error.code === 'unavailable') {
-      console.error("Firestore connectivity issue detected. Please check network/config.");
+      console.warn("Firestore: Backend currently unreachable. This is common in some restricted networks. The app will continue in offline-ready mode.");
+    } else {
+      console.error("Firestore connection health check failed:", error.code, error.message);
     }
   }
 }

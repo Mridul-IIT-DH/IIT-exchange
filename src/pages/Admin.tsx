@@ -89,32 +89,31 @@ export default function Admin() {
         }
       };
 
-      const [totalCount, activeCount, uCount] = await Promise.all([
+      const [totalCount, allProductsSnap, uCount] = await Promise.all([
         getCount(productsRef, 'totalProducts'),
-        getCount(query(productsRef, where('status', '==', 'active')), 'activeProducts'),
+        getDocs(productsRef),
         getCount(usersRef, 'totalUsers')
       ]);
 
+      const allItems = allProductsSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+      const now = new Date();
+      const realActiveCount = allItems.filter(p => {
+        const createdAt = toSafeDate(p.createdAt);
+        const expiresAt = p.expiresAt ? toSafeDate(p.expiresAt) : new Date(createdAt.getTime() + 10 * 24 * 60 * 60 * 1000);
+        return p.status === 'active' && expiresAt >= now;
+      }).length;
+
       setStats({
         totalProducts: totalCount,
-        activeProducts: activeCount,
+        activeProducts: realActiveCount,
         totalUsers: uCount
       });
 
-      // 2. Tab Specific Detailed Fetch with distinct handlers
-      console.log(`Admin [Data]: Attempting fetch for tab "${activeTab}"`);
-      
+      // 2. Tab Specific Detailed Fetch
       if (activeTab === 'listings') {
-        try {
-          const q = query(productsRef);
-          const snap = await getDocs(q);
-          const items = snap.docs.map(d => ({ id: d.id, ...d.data() }));
-          items.sort((a: any, b: any) => (a.title || '').localeCompare(b.title || ''));
-          setListings(items);
-          console.log(`Admin [Data]: Successfully loaded ${snap.docs.length} listings`);
-        } catch (err) {
-          handleFirestoreError(err, 'list', 'products');
-        }
+        const items = [...allItems];
+        items.sort((a: any, b: any) => (a.title || '').localeCompare(b.title || ''));
+        setListings(items);
       } 
       
       else if (activeTab === 'users') {
@@ -424,13 +423,23 @@ export default function Admin() {
                         <span className="text-sm font-black text-google-blue">₹{l.price.toLocaleString()}</span>
                       </td>
                       <td className="px-6 py-4">
-                        <span className={`px-2 py-1 rounded-md text-[10px] font-black uppercase tracking-wider ${
-                          l.status === 'active' ? 'bg-green-50 text-google-green border border-green-100' : 
-                          l.status === 'sold' ? 'bg-red-50 text-google-red border border-red-100' : 
-                          'bg-amber-50 text-amber-600 border border-amber-100'
-                        }`}>
-                          {l.status}
-                        </span>
+                        {(() => {
+                          const now = new Date();
+                          const createdAt = toSafeDate(l.createdAt);
+                          const expiresAt = l.expiresAt ? toSafeDate(l.expiresAt) : new Date(createdAt.getTime() + 10 * 24 * 60 * 60 * 1000);
+                          const isExpired = expiresAt < now;
+
+                          return (
+                            <span className={`px-2 py-1 rounded-md text-[10px] font-black uppercase tracking-wider ${
+                              l.status === 'active' && !isExpired ? 'bg-green-50 text-google-green border border-green-100' : 
+                              l.status === 'sold' ? 'bg-red-50 text-google-red border border-red-100' : 
+                              (l.status === 'active' && isExpired) || l.status === 'archived' || l.status === 'expired' ? 'bg-amber-50 text-amber-600 border border-amber-100' :
+                              'bg-gray-50 text-gray-500 border border-gray-100'
+                            }`}>
+                              {(l.status === 'active' && isExpired) ? 'EXPIRED' : l.status}
+                            </span>
+                          );
+                        })()}
                       </td>
                       <td className="px-6 py-4 text-xs text-gray-600 font-medium">
                         {formatSafeDate(l.createdAt, 'MMM d, h:mm a')}
@@ -506,13 +515,23 @@ export default function Admin() {
                         </div>
                         <p className="text-[10px] text-gray-600 font-mono truncate uppercase mt-1">ID: {l.id}</p>
                         <div className="mt-2 flex items-center gap-2">
-                           <span className={`px-2 py-0.5 rounded-md text-[8px] font-black uppercase tracking-wider ${
-                            l.status === 'active' ? 'bg-green-50 text-google-green border border-green-100' : 
-                            l.status === 'sold' ? 'bg-red-50 text-google-red border border-red-100' : 
-                            'bg-amber-50 text-amber-600 border border-amber-100'
-                          }`}>
-                            {l.status}
-                          </span>
+                           {(() => {
+                            const now = new Date();
+                            const createdAt = toSafeDate(l.createdAt);
+                            const expiresAt = l.expiresAt ? toSafeDate(l.expiresAt) : new Date(createdAt.getTime() + 10 * 24 * 60 * 60 * 1000);
+                            const isExpired = expiresAt < now;
+
+                            return (
+                              <span className={`px-2 py-0.5 rounded-md text-[8px] font-black uppercase tracking-wider ${
+                                l.status === 'active' && !isExpired ? 'bg-green-50 text-google-green border border-green-100' : 
+                                l.status === 'sold' ? 'bg-red-50 text-google-red border border-red-100' : 
+                                (l.status === 'active' && isExpired) || l.status === 'archived' || l.status === 'expired' ? 'bg-amber-50 text-amber-600 border border-amber-100' :
+                                'bg-gray-50 text-gray-500 border border-gray-100'
+                              }`}>
+                                {(l.status === 'active' && isExpired) ? 'EXPIRED' : l.status}
+                              </span>
+                            );
+                          })()}
                           <span className="text-[10px] text-gray-600">{formatSafeDate(l.createdAt, 'MMM d')}</span>
                         </div>
                       </div>

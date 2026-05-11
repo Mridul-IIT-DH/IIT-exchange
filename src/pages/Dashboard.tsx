@@ -26,7 +26,7 @@ export default function Dashboard() {
   const [loading, setLoading] = useState(true);
   const [wishlistLoading, setWishlistLoading] = useState(false);
   const [activeTab, setActiveTab] = useState<'listings' | 'wishlist' | 'profile'>((searchParams.get('tab') as any) || 'listings');
-  const [listingsSubTab, setListingsSubTab] = useState<'active' | 'sold' | 'expired'>('active');
+  const [listingsSubTab, setListingsSubTab] = useState<'active' | 'sold' | 'archived'>('active');
   const [listingToDelete, setListingToDelete] = useState<{id: string, images?: string[]} | null>(null);
 
   // Profile Edit State
@@ -127,7 +127,10 @@ export default function Dashboard() {
 
   const handleStatusChange = async (id: string, newStatus: string) => {
     try {
-      await updateDoc(doc(db, 'products', id), { status: newStatus });
+      await updateDoc(doc(db, 'products', id), { 
+        status: newStatus,
+        updatedAt: new Date()
+      });
       toast.success(`Marked as ${newStatus}`);
       fetchMyListings();
     } catch (error: any) {
@@ -153,16 +156,22 @@ export default function Dashboard() {
     }
   };
 
-  const handleExtend = async (id: string) => {
+  const handleRelist = async (id: string) => {
     try {
+      const now = new Date();
+      const expiresAt = new Date();
+      expiresAt.setDate(now.getDate() + 10);
+
       await updateDoc(doc(db, 'products', id), { 
-        expiresAt: Date.now() + 10 * 24 * 60 * 60 * 1000,
-        status: 'active'
+        createdAt: now,
+        expiresAt: expiresAt,
+        status: 'active',
+        updatedAt: now
       });
-      toast.success('Listing extended for 10 days!');
+      toast.success('Listing relisted for 10 days!');
       fetchMyListings();
     } catch (error: any) {
-      toast.error(`Failed to extend: ${error.message}`);
+      toast.error(`Failed to relist: ${error.message}`);
     }
   };
 
@@ -215,7 +224,39 @@ export default function Dashboard() {
     );
   }
 
-  const myFilteredProducts = products.filter(p => p.status === listingsSubTab);
+  const now = new Date();
+  
+  const getProductExpirtyStatus = (p: any) => {
+    const createdAt = toSafeDate(p.createdAt);
+    const expiresAt = p.expiresAt ? toSafeDate(p.expiresAt) : new Date(createdAt.getTime() + 10 * 24 * 60 * 60 * 1000);
+    return {
+      expiresAt,
+      isExpired: expiresAt < now
+    };
+  };
+
+  const subTabCounts = {
+    active: products.filter(p => {
+      const { isExpired } = getProductExpirtyStatus(p);
+      return p.status === 'active' && !isExpired;
+    }).length,
+    sold: products.filter(p => p.status === 'sold').length,
+    archived: products.filter(p => {
+      const { isExpired } = getProductExpirtyStatus(p);
+      return p.status === 'archived' || p.status === 'expired' || (p.status === 'active' && isExpired);
+    }).length,
+  };
+
+  const myFilteredProducts = products.filter(p => {
+    const { isExpired } = getProductExpirtyStatus(p);
+    if (listingsSubTab === 'archived') {
+      return p.status === 'archived' || p.status === 'expired' || (p.status === 'active' && isExpired);
+    }
+    if (listingsSubTab === 'active') {
+      return p.status === 'active' && !isExpired;
+    }
+    return p.status === listingsSubTab;
+  });
 
   return (
     <div className="max-w-5xl mx-auto py-8 text-gray-900 px-4 sm:px-6">
@@ -272,7 +313,7 @@ export default function Dashboard() {
             {activeTab === 'listings' && (
               <div className="space-y-8">
                 <div className="flex gap-3 overflow-x-auto no-scrollbar pb-2">
-                  {(['active', 'sold', 'expired'] as const).map(subTab => (
+                  {(['active', 'sold', 'archived'] as const).map(subTab => (
                     <motion.button
                       whileTap={{ scale: 0.95 }}
                       key={subTab}
@@ -284,7 +325,7 @@ export default function Dashboard() {
                           : "bg-white border border-gray-200 text-gray-500 hover:bg-gray-50"
                       )}
                     >
-                      {subTab} ({products.filter(p => p.status === subTab).length})
+                      {subTab} ({subTabCounts[subTab]})
                     </motion.button>
                   ))}
                 </div>
@@ -340,11 +381,24 @@ export default function Dashboard() {
                                 <Eye size={12} /> {product.contactClicks} REVEALS
                               </span>
                             )}
-                            {listingsSubTab === 'active' && (
-                              <span className="text-amber-500 flex items-center gap-1.5">
-                                <Clock size={12} /> {formatDistanceToNow(toSafeDate(product.expiresAt), { addSuffix: true }).toUpperCase()}
-                              </span>
-                            )}
+                            {(() => {
+                              const { expiresAt, isExpired } = getProductExpirtyStatus(product);
+                              if (product.status === 'active' && !isExpired) {
+                                return (
+                                  <span className="text-amber-500 flex items-center gap-1.5">
+                                    <Clock size={12} /> {formatDistanceToNow(expiresAt, { addSuffix: true }).toUpperCase()}
+                                  </span>
+                                );
+                              }
+                              if ((product.status === 'active' && isExpired) || product.status === 'archived' || product.status === 'expired') {
+                                return (
+                                  <span className="text-google-red flex items-center gap-1.5 font-black">
+                                    <Tag size={12} /> EXPIRED
+                                  </span>
+                                );
+                              }
+                              return null;
+                            })()}
                           </div>
                         </div>
 
@@ -357,25 +411,31 @@ export default function Dashboard() {
                             <Edit2 size={20} strokeWidth={2.5} />
                           </Link>
 
-                          {listingsSubTab === 'active' && (
-                            <button 
-                              onClick={() => handleStatusChange(product.id, 'sold')}
-                              className="flex-1 sm:flex-none p-4 bg-green-50 text-google-green hover:bg-green-100 rounded-2xl transition-all active:scale-90 border border-green-50"
-                              title="Mark as Sold"
-                            >
-                              <Tag size={20} strokeWidth={2.5} />
-                            </button>
-                          )}
+                          {(() => {
+                            const { isExpired } = getProductExpirtyStatus(product);
+                            return product.status === 'active' && !isExpired && (
+                              <button 
+                                onClick={() => handleStatusChange(product.id, 'sold')}
+                                className="flex-1 sm:flex-none p-4 bg-green-50 text-google-green hover:bg-green-100 rounded-2xl transition-all active:scale-90 border border-green-50"
+                                title="Mark as Sold"
+                              >
+                                <Tag size={20} strokeWidth={2.5} />
+                              </button>
+                            );
+                          })()}
                           
-                          {listingsSubTab === 'expired' && (
-                            <button 
-                              onClick={() => handleExtend(product.id)}
-                              className="flex-1 sm:flex-none p-4 bg-blue-50 text-google-blue hover:bg-blue-100 rounded-2xl transition-all active:scale-90"
-                              title="Extend Listing"
-                            >
-                              <Clock size={20} strokeWidth={2.5} />
-                            </button>
-                          )}
+                          {(() => {
+                            const { isExpired } = getProductExpirtyStatus(product);
+                            return ((product.status === 'active' && isExpired) || product.status === 'archived' || product.status === 'expired') && (
+                              <button 
+                                onClick={() => handleRelist(product.id)}
+                                className="flex-1 sm:flex-none p-4 bg-blue-50 text-google-blue hover:bg-blue-100 rounded-2xl transition-all active:scale-90"
+                                title="Relist Item"
+                              >
+                                <Clock size={20} strokeWidth={2.5} />
+                              </button>
+                            );
+                          })()}
 
                           <button 
                             onClick={() => setListingToDelete({ id: product.id, images: product.images })}

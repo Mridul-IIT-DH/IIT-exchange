@@ -500,8 +500,11 @@ async function startServer() {
       try {
         const product = doc.data();
         
-        // 1. Mark as expired
-        await doc.ref.update({ status: 'expired' });
+        // 1. Mark as archived
+        await doc.ref.update({ 
+          status: 'archived',
+          updatedAt: admin.firestore.FieldValue.serverTimestamp()
+        });
         stats.updated++;
 
         // 2. Generate and send magic links
@@ -511,7 +514,7 @@ async function startServer() {
         // Use PUBLIC_URL if available, otherwise derive from request or fallback
         const baseUrl = process.env.PUBLIC_URL 
           ? (process.env.PUBLIC_URL.endsWith('/') ? process.env.PUBLIC_URL.slice(0, -1) : process.env.PUBLIC_URL)
-          : (req ? `${req.headers['x-forwarded-proto'] || 'http'}://${req.headers.host}` : 'https://iitdh.market');
+          : (req ? `${req.headers['x-forwarded-proto'] || 'http'}://${req.headers.host}` : 'https://iit-exchange-368e9.web.app');
         
         const links = {
           sold: `${baseUrl}/api/confirm-sold?token=${soldToken}`,
@@ -543,8 +546,8 @@ async function startServer() {
     return stats;
   }
 
-  // Self-Triggering Loop (Runs every 24 hours)
-  const sentinelInterval = 24 * 60 * 60 * 1000;
+  // Self-Triggering Loop (Runs every 1 hour)
+  const sentinelInterval = 60 * 60 * 1000;
   setInterval(() => {
     runSentinelJob().catch(e => console.error("[Sentinel Scheduled Error]:", e));
   }, sentinelInterval);

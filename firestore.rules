@@ -73,19 +73,29 @@ service cloud.firestore {
                data.price is number && data.price >= 0 &&
                (!("productAge" in data) || (data.productAge is string && data.productAge.matches('^(Brand New \\(Unused \\/ Sealed\\)|Less than 1 month|1 to 6 months|6 to 12 months|1 to 2 years|More than 2 years)$'))) &&
                data.sellerId is string && data.sellerId.size() <= 128 &&
-               data.status is string && data.status.matches('^(active|sold|expired)$');
+               data.status is string && data.status.matches('^(active|sold|expired|archived)$') &&
+               (!("expiresAt" in data) || data.expiresAt is timestamp);
       }
 
       allow create: if isIITStudent() && 
                     isValidId(productId) &&
                     incoming().sellerId == request.auth.uid &&
-                    isValidProduct(incoming());
+                    isValidProduct(incoming()) &&
+                    incoming().status == 'active';
       
       allow update: if isAdmin() || (
         isIITStudent() && 
         existing().sellerId == request.auth.uid &&
         isValidProduct(incoming()) &&
-        incoming().sellerId == existing().sellerId // IMMUTABLE: Seller can't be changed
+        incoming().sellerId == existing().sellerId && // IMMUTABLE: Seller can't be changed
+        (
+          // Action: Mark Sold
+          (incoming().status == 'sold' && incoming().diff(existing()).affectedKeys().hasOnly(['status', 'updatedAt'])) ||
+          // Action: Relist (reset expiry and status)
+          ((existing().status == 'archived' || existing().status == 'expired') && incoming().status == 'active' && incoming().diff(existing()).affectedKeys().hasAll(['status', 'expiresAt', 'createdAt']) && incoming().diff(existing()).affectedKeys().hasOnly(['status', 'expiresAt', 'createdAt', 'updatedAt'])) ||
+          // Action: General Edit
+          (incoming().status == existing().status && incoming().diff(existing()).affectedKeys().hasOnly(['title', 'description', 'price', 'productAge', 'images', 'category', 'updatedAt', 'tags', 'isPriceNegotiable', 'isPriceFixed']))
+        )
       ) || (
         // ATOMIC ANALYTICS: Prevents data poisoning in view counts
         isSignedIn() && 
@@ -103,6 +113,12 @@ service cloud.firestore {
     match /admins/{adminId} {
       allow read: if isSignedIn(); // Verify who is an admin for local caching
       allow write: if false; // Role elevations must happen via Server/Console for 2FA security
+    }
+    // ---------------------------------------------------------
+    // 5. SYSTEM PROBES
+    // ---------------------------------------------------------
+    match /_internal_/healthcheck {
+      allow get: if true; // Publicly readable health check to verify backend reachability
     }
   }
 }
